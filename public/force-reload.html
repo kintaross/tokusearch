@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>キャッシュクリア中...</title>
+  <script>
+    // ブラウザキャッシュを強制的にクリアして再読み込み
+    if (performance.navigation.type !== 1) {
+      // Hard reload
+      window.location.href = window.location.href.split('?')[0] + '?_=' + Date.now();
+    } else {
+      // 2回目のリロード後はホームページへ
+      window.location.href = '/';
+    }
+  </script>
+</head>
+<body>
+  <p>キャッシュをクリア中...</p>
+</body>
+</html>
+
+

@@ -1,0 +1,809 @@
+{
+  "name": "コラム自動生成（完全版）",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            },
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "5b7a2645-ae6f-4d05-92f4-ac7c8492be33",
+      "name": "ScheduleTrigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1200,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "list",
+          "cachedResultName": "TokuSearch"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "column_themes",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "used",
+              "lookupValue": "FALSE"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "db61a9f1-5121-46c4-972b-de5b33230a78",
+      "name": "GetUnusedThemes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -976,
+        304
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-unused-count",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "smaller",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-unused-themes",
+      "name": "CheckUnusedThemes",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "list",
+          "cachedResultName": "TokuSearch"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "column_themes",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "get-all-themes",
+      "name": "GetAllThemes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -528,
+        200
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allThemes = $input.all().map(item => item.json);\n\n// 最大Noを取得\nlet maxNo = 0;\nfor (const theme of allThemes) {\n  const no = parseInt(theme.no || '0', 10);\n  if (no > maxNo) {\n    maxNo = no;\n  }\n}\n\nconst startNo = maxNo + 1;\nconst generateCount = 50; // 生成数\nconst levelDistribution = '初心者向け10件／中級者以上向け20件／上級者向け10件／超ポイ活特化10件';\n\n// 既存テーマをCSV形式に変換\nconst existingThemesCSV = allThemes\n  .map(t => `${t.no},${t.level || ''},${t.theme || ''}`)\n  .join('\\n');\n\nconst prompt = `あなたは、生活を豊かにする節約・ポイ活・お得情報の専門ライターです。\n\n# 前提\n- すでに No.1〜No.${maxNo} までの「お得コラムテーマ」が存在します。\n- これらと重複しない、新しいコラムテーマを追加で作成します。\n\n# 今回の目的\n- 既存テーマと被らない「新しいコラムテーマ」を ${generateCount}件 生成します。\n- No.は ${startNo} から始めて、連番で付与します。\n- レベルは、${levelDistribution} に従ってください。\n\n# 既存テーマ一覧\nNo,レベル,タイトル\n${existingThemesCSV}\n\n# テーマ設計ルール（既存テーマと共通の方針）\n- ジャンルは「日常生活・買い物・旅行・お金・テクノロジー・ポイント・時短」などを幅広く含める。\n- 既存テーマと同じ・類似の切り口にならないように、できる限り重複を避ける。\n- 読者の関心を引く\"独自性\"のあるテーマを必ず含める。\n- タイトルは短く、キャッチーにする。\n- 専門用語はできるだけ避け、一般の読者にもわかる語彙を中心にする。\n- 違法行為や規約違反につながる内容は含めない。\n\n# レベルごとのイメージ\n- 初心者向け：\n  - 「基礎知識」「入門」「今日からできる簡単テク」「失敗しやすいポイントの整理」が中心。\n- 中級者以上向け：\n  - 「比較」「戦略」「組み合わせ」「年間計画」など、一段深い視点を入れる。\n- 上級者向け：\n  - 「仕組み化」「数値管理（還元率・時間単価）」「複数サービス横断」など高度な内容。\n- 超ポイ活特化：\n  - ポイント多重取り・キャンペーン活用・失効管理・税金支払いでのポイント獲得など、\n    ポイ活に強く特化したマニア向けテーマを中心にする。\n  - 難易度はバラけさせ、タイトルから内容がイメージできるようにする。\n\n# 出力形式（重要）\n- 出力は **CSV形式のみ** とし、1行目はヘッダ行とします。\n- 1行目：No,レベル,タイトル\n- 2行目以降：No,レベル,タイトル をカンマ区切りで **${generateCount}行分** 出力してください。\n- No は ${startNo} から始めて、1ずつ増やしてください。\n- コードブロック（\\`\\`\\`）や説明文、日本語による前置き・あとがきなど、CSV以外の文字は一切出力しないこと。\n\n上記条件に従い、新規テーマのみをCSV形式で出力してください。`;\n\nreturn [{ json: { prompt, startNo, generateCount, levelDistribution } }];"
+      },
+      "id": "build-theme-prompt",
+      "name": "BuildThemePrompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json.prompt}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        200
+      ],
+      "id": "generate-themes",
+      "name": "GenerateThemes",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gojn353h4HLDUzF2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.content.parts[0].text;\n\n// CSV形式のテキストを抽出\nlet csvText = rawText.trim()\n  .replace(/^```csv\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/\\s*```$/i, '')\n  .trim();\n\n// ヘッダー行をスキップしてパース\nconst lines = csvText.split('\\n').filter(line => line.trim());\nconst themes = [];\n\nfor (let i = 1; i < lines.length; i++) { // 1行目（ヘッダー）をスキップ\n  const line = lines[i].trim();\n  if (!line) continue;\n  \n  // CSVパース（カンマ区切り）\n  const parts = line.split(',').map(p => p.trim());\n  if (parts.length >= 3) {\n    themes.push({\n      no: parts[0],\n      level: parts[1],\n      theme: parts[2]\n    });\n  }\n}\n\nconsole.log(`✅ 生成されたテーマ数: ${themes.length}件`);\n\nreturn themes.map(theme => ({ json: theme }));"
+      },
+      "id": "parse-themes",
+      "name": "ParseThemes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "list",
+          "cachedResultName": "TokuSearch"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 348743133,
+          "mode": "list",
+          "cachedResultName": "column_themes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14/edit#gid=348743133"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "no": "={{$json.no}}",
+            "level": "={{$json.level}}",
+            "theme": "={{$json.theme}}",
+            "used": "FALSE",
+            "used_at": ""
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "no",
+              "displayName": "no",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "level",
+              "displayName": "level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "theme",
+              "displayName": "theme",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "used",
+              "displayName": "used",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "used_at",
+              "displayName": "used_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "append-themes",
+      "name": "AppendThemes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        368,
+        200
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const unusedThemes = $input.all().map(item => item.json);\n\nif (unusedThemes.length === 0) {\n  throw new Error('❌ 未使用テーマがありません');\n}\n\nconst randomIndex = Math.floor(Math.random() * unusedThemes.length);\nconst selectedTheme = unusedThemes[randomIndex];\n\nconsole.log(`✅ テーマ選択: ${selectedTheme.theme}`);\n\nreturn [{ json: selectedTheme }];"
+      },
+      "id": "61f1b4a3-d8df-4add-9505-741221286d9b",
+      "name": "RandomThemeSelection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const theme = $json.theme;\nconst level = $json.level;\nconst themeNo = $json.no;\n\nconst prompt = `\nYou are a JSON generation specialist. Output ONLY a valid JSON object.\n\nテーマ: ${theme}\nレベル: ${level}\n\nIMPORTANT RULES:\n1. Output ONLY the JSON object - NO markdown code blocks, NO explanations\n2. Start directly with { and end with }\n3. Use \\\\n for line breaks in content_markdown\n4. Properly escape all special characters (quotes, backslashes)\n5. Keep content_markdown between 2000-3000 characters\n6. Use <mark>text</mark> for important highlights (yellow background + yellow underline)\n7. Use **bold** for emphasis\n8. Add [IMAGE: description] markers where images would enhance understanding\n\nJSON Structure:\n{\n  \"title\": \"article title (30-40 chars)\",\n  \"description\": \"article summary (80-120 chars)\",\n  \"content_markdown\": \"# Heading1\\\\n\\\\nContent...\\\\n\\\\n## Heading2\\\\n\\\\nMore content...\",\n  \"category\": \"one of: ポイント活用, クレジットカード, 節約術, 旅行, キャッシュレス, 家計管理, ふるさと納税\",\n  \"tags\": \"tag1,tag2,tag3\"\n}\n\nArticle Structure for content_markdown:\n1. 導入（読者の悩みと解決策）\n2. 基本の考え方\n3. 具体的なステップ\n4. 注意点・よくある失敗\n5. まとめ\n\nContent Enhancement Guidelines:\n- Use **bold** for key terms and important numbers (2-3 per section)\n- Use <mark>highlight</mark> for critical information that MUST be remembered\n  - Apply the test preparation strategy: highlight what you would underline when studying\n  - Criteria for highlighting (like test prep):\n    * Core concepts that everything else builds upon\n    * Common mistakes or critical warnings (\"〜してはいけない\")\n    * Key numbers, percentages, or deadlines that directly impact results\n    * Action steps that are essential for success\n  - DO NOT highlight:\n    * General background information\n    * Examples or supplementary details\n    * Redundant information\n  - Example: <mark>ポイント還元率20%は期間限定で11月30日まで</mark>\n  - Limit to 1-3 highlights per article for maximum impact\n  - The system will automatically add yellow background + yellow underline\n- Add [IMAGE: brief description] where visuals would help (e.g., flow charts, comparison tables, step illustrations)\n  - Example: [IMAGE: ポイント還元率の比較表]\n  - Place markers at natural breaks, not mid-paragraph\n- Use bullet points (- or *) for lists\n- Use numbered lists (1. 2. 3.) for sequential steps\n\nOUTPUT ONLY THE JSON - START NOW:\n`.trim();\n\nreturn [{ json: { prompt, theme, level, themeNo } }];"
+      },
+      "id": "92030626-10d6-4488-a5e4-fac46b565091",
+      "name": "BuildArticlePrompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json.prompt}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        304
+      ],
+      "id": "201dcf69-8fcc-4dae-bba9-17045a297773",
+      "name": "GenerateArticle",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gojn353h4HLDUzF2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.content.parts[0].text;\n\n// Step 1: コードブロックと余計なテキストを除去\nlet jsonString = rawText.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/\\s*```$/i, '')\n  .trim();\n\n// Step 2: JSONの開始・終了位置を探す\nconst jsonStart = jsonString.indexOf('{');\nconst jsonEnd = jsonString.lastIndexOf('}');\n\nif (jsonStart === -1 || jsonEnd === -1) {\n  console.error('❌ JSON構造が見つかりません');\n  throw new Error('JSONの { } が見つかりません');\n}\n\njsonString = jsonString.substring(jsonStart, jsonEnd + 1);\n\nconsole.log('📝 JSON抽出（長さ: ' + jsonString.length + '文字）');\nconsole.log('📝 JSON先頭500文字:', jsonString.substring(0, 500));\n\n// Step 3: より積極的なJSON修正処理\nfunction sanitizeJSON(str) {\n  let result = str;\n  \n  // 方法1: フィールドごとに処理（より安全）\n  // \"content_markdown\":\"...\" の部分を探して修正\n  \n  // まず、content_markdownの開始位置を探す\n  const cmStart = result.indexOf('\"content_markdown\"');\n  if (cmStart === -1) {\n    console.log('⚠️ content_markdownが見つかりません');\n    return result;\n  }\n  \n  // content_markdownの値の開始位置（: \"の後）\n  const valueStart = result.indexOf('\"', cmStart + 18) + 1; // \"content_markdown\"の後の\"\n  \n  // 値の終了位置を探す（エスケープされていない\"を探す）\n  let valueEnd = valueStart;\n  let escapeCount = 0;\n  \n  for (let i = valueStart; i < result.length; i++) {\n    if (result[i] === '\\\\') {\n      escapeCount++;\n    } else if (result[i] === '\"') {\n      // 偶数個のバックスラッシュの後の\"は終了\n      if (escapeCount % 2 === 0) {\n        valueEnd = i;\n        break;\n      }\n      escapeCount = 0;\n    } else {\n      escapeCount = 0;\n    }\n  }\n  \n  console.log('📄 content_markdown位置: ' + valueStart + ' ~ ' + valueEnd);\n  \n  // content_markdownの値を抽出\n  let content = result.substring(valueStart, valueEnd);\n  console.log('📄 content_markdown長さ: ' + content.length);\n  \n  // 修正処理\n  // 1. 既にエスケープされているものを保護\n  content = content.replace(/\\\\n/g, '<<<NL>>>');\n  content = content.replace(/\\\\\"/g, '<<<QT>>>');\n  content = content.replace(/\\\\\\\\/g, '<<<BS>>>');\n  \n  // 2. 実際の改行を\\nに\n  content = content.replace(/\\r?\\n/g, '\\\\n');\n  \n  // 3. エスケープされていない\"を\\\"に（これが重要）\n  // ただし、既に保護したものは除外\n  content = content.replace(/\"/g, '\\\\\"');\n  \n  // 4. タブを空白に\n  content = content.replace(/\\t/g, '  ');\n  \n  // 5. 保護したものを戻す\n  content = content.replace(/<<<NL>>>/g, '\\\\n');\n  content = content.replace(/<<<QT>>>/g, '\\\\\"');\n  content = content.replace(/<<<BS>>>/g, '\\\\\\\\');\n  \n  // 元の文字列で置換\n  result = result.substring(0, valueStart) + content + result.substring(valueEnd);\n  \n  return result;\n}\n\nlet article;\nlet parseAttempts = 0;\n\n// Step 4: パース試行（複数の方法を試す）\nwhile (parseAttempts < 3) {\n  parseAttempts++;\n  \n  try {\n    if (parseAttempts === 1) {\n      // 試行1: そのままパース\n      console.log('🔄 パース試行1: 通常');\n      article = JSON.parse(jsonString);\n    } else if (parseAttempts === 2) {\n      // 試行2: サニタイズしてパース\n      console.log('🔄 パース試行2: サニタイズ');\n      const sanitized = sanitizeJSON(jsonString);\n      article = JSON.parse(sanitized);\n    } else {\n      // 試行3: より積極的な修正\n      console.log('🔄 パース試行3: 積極的修正');\n      let fixed = sanitizeJSON(jsonString);\n      // タブを削除\n      fixed = fixed.replace(/\\t/g, ' ');\n      article = JSON.parse(fixed);\n    }\n    \n    console.log('✅ JSON解析成功（試行' + parseAttempts + '）');\n    break;\n    \n  } catch (e) {\n    console.error('❌ 試行' + parseAttempts + '失敗:', e.message);\n    \n    // エラー位置を常に表示（デバッグ用）\n    const match = e.message.match(/position (\\d+)/);\n    if (match) {\n      const pos = parseInt(match[1]);\n      const start = Math.max(0, pos - 200);\n      const end = Math.min(jsonString.length, pos + 200);\n      console.error('📍 エラー位置: ' + pos + ' / ' + jsonString.length);\n      console.error('📍 前後400文字:', jsonString.substring(start, end));\n      \n      // エラー位置の文字を表示\n      if (pos < jsonString.length) {\n        console.error('📍 エラー位置の文字: [' + jsonString[pos] + '] (charCode: ' + jsonString.charCodeAt(pos) + ')');\n        console.error('📍 エラー前10文字: [' + jsonString.substring(Math.max(0, pos-10), pos) + ']');\n        console.error('📍 エラー後10文字: [' + jsonString.substring(pos, Math.min(jsonString.length, pos+10)) + ']');\n      }\n    }\n    \n    if (parseAttempts === 3) {\n      throw new Error('JSON解析失敗（全試行終了）: ' + e.message);\n    }\n  }\n}\n\nconst result = {\n  ...article,\n  theme: $items('BuildArticlePrompt')[0].json.theme,\n  level: $items('BuildArticlePrompt')[0].json.level,\n  themeNo: $items('BuildArticlePrompt')[0].json.themeNo\n};\n\nconsole.log('✅ 記事生成完了:', result.title);\n\nreturn [{ json: result }];"
+      },
+      "id": "a635dea0-330b-4f28-a64d-99f7290acd46",
+      "name": "ParseArticleJSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const articleData = $json;\n\n// [IMAGE: description]マーカーを抽出\nconst imageMarkers = [];\nconst imageRegex = /\\[IMAGE:\\s*([^\\]]+)\\]/gi;\nlet match;\nwhile ((match = imageRegex.exec(articleData.content_markdown)) !== null) {\n  imageMarkers.push({\n    description: match[1].trim(),\n    position: match.index\n  });\n}\n\nconsole.log(`📸 画像マーカー検出: ${imageMarkers.length}件`);\n\nreturn [{ json: { ...articleData, imageMarkers } }];"
+      },
+      "id": "extract-image-markers",
+      "name": "ExtractImageMarkers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.0-flash-exp",
+          "mode": "list"
+        },
+        "prompt": "={{ 'コラム記事のサムネイル画像を生成してください。\\n\\nタイトル: ' + $json.title + '\\n\\n説明: ' + $json.description + '\\n\\nカテゴリ: ' + $json.category + '\\n\\nこのコラムの内容を表す、魅力的で分かりやすいサムネイル画像を生成してください。画像は16:9の比率で、日本語のテキストを含むことができます。' }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        592,
+        200
+      ],
+      "id": "generate-thumbnail",
+      "name": "GenerateThumbnail",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gojn353h4HLDUzF2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gemini 3.0の画像生成結果を処理\n// 注意: Gemini 3.0の画像生成APIの実際のレスポンス形式に合わせて調整が必要\nconst response = $json;\n\n// 画像データを取得（実際のAPIレスポンス形式に合わせて調整）\n// 仮の実装: base64エンコードされた画像データを想定\nlet imageData = null;\nlet imageUrl = null;\n\n// 実際のAPIレスポンスに応じて調整が必要\nif (response.content && response.content.parts) {\n  for (const part of response.content.parts) {\n    if (part.inlineData) {\n      imageData = part.inlineData.data;\n      break;\n    }\n  }\n}\n\n// 画像データがない場合はエラー\nif (!imageData) {\n  console.warn('⚠️ 画像データが見つかりません。APIレスポンス形式を確認してください。');\n  imageUrl = ''; // フォールバック: 空文字列\n} else {\n  // base64データを一時的に保存（実際の実装ではアップロードAPIに送信）\n  // ここでは後続ノードで処理するため、データを保持\n  imageUrl = 'data:image/png;base64,' + imageData;\n}\n\nreturn [{ json: { ...$items('ExtractImageMarkers')[0].json, thumbnailImageData: imageData, thumbnailImageUrl: imageUrl } }];"
+      },
+      "id": "process-thumbnail",
+      "name": "ProcessThumbnail",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tokusearch.vercel.app/api/admin/upload",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "contentType": "multipart/form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file",
+              "value": "={{ $json.thumbnailImageData }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "upload-thumbnail",
+      "name": "UploadThumbnail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "RT6aq4TB1Vj8V2Tn",
+          "name": "Credential Name"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const articleData = $items('ExtractImageMarkers')[0].json;\nconst thumbnailUrl = $json.url || '';\n\n// 日本語対応のスラッグ生成（lib/columns.tsと完全一致）\nconst slug = articleData.title\n  .toLowerCase()\n  .replace(/[^a-z0-9\\u3040-\\u309f\\u30a0-\\u30ff\\u4e00-\\u9faf]+/g, '-')\n  .replace(/^-+|-+$/g, '');\n\nconst content_html = articleData.content_markdown\n  .replace(/^### (.*$)/gim, '<h3>$1</h3>')\n  .replace(/^## (.*$)/gim, '<h2>$1</h2>')\n  .replace(/^# (.*$)/gim, '<h1>$1</h1>')\n  .replace(/\\*\\*(.*?)\\*\\*/gim, '<strong>$1</strong>')\n  .replace(/\\*(.*?)\\*/gim, '<em>$1</em>')\n  .replace(/\\n\\n/gim, '</p><p>')\n  .replace(/\\n/gim, '<br>');\n\nconst columnData = {\n  slug: slug,\n  title: articleData.title,\n  description: articleData.description,\n  content_markdown: articleData.content_markdown,\n  content_html: '<p>' + content_html + '</p>',\n  category: articleData.category,\n  tags: articleData.tags,\n  thumbnail_url: thumbnailUrl,\n  author: 'TokuSearch AI',\n  status: 'published',\n  is_featured: false,\n  theme: articleData.theme,\n  themeNo: articleData.themeNo\n};\n\nconsole.log('✅ データ準備完了:', columnData.title);\nconsole.log('📝 生成されたスラッグ:', slug);\nconsole.log('🖼️ サムネイルURL:', thumbnailUrl);\n\nreturn [{ json: columnData }];"
+      },
+      "id": "026ad2c0-d301-4953-b05b-ef371d7f359a",
+      "name": "PrepareColumnData",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tokusearch.vercel.app/api/admin/columns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "03ec9e5d-7125-4c20-a637-da2835a91e22",
+      "name": "PostColumn",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1488,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "RT6aq4TB1Vj8V2Tn",
+          "name": "Credential Name"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "list",
+          "cachedResultName": "TokuSearch",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 348743133,
+          "mode": "list",
+          "cachedResultName": "column_themes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14/edit#gid=348743133"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "no": "={{$items('RandomThemeSelection')[0].json.no}}",
+            "used": "TRUE",
+            "used_at": "={{new Date().toISOString()}}"
+          },
+          "matchingColumns": [
+            "no"
+          ],
+          "schema": [
+            {
+              "id": "no",
+              "displayName": "no",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "used",
+              "displayName": "used",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "used_at",
+              "displayName": "used_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "2f794166-3eab-4891-930e-573d42276e5a",
+      "name": "UpdateThemeUsed",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1712,
+        304
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const columnData = $items('PrepareColumnData')[0].json;\n\nconst message = `🎉 コラム自動生成完了！\n\nタイトル: ${columnData.title}\nカテゴリ: ${columnData.category}\nURL: https://tokusearch.vercel.app/columns/${columnData.slug}\nサムネイル: ${columnData.thumbnail_url || 'なし'}\n\n※画像生成機能付き`;\n\nconsole.log(message);\n\nreturn [{ json: { message, success: true } }];"
+      },
+      "id": "f04b3510-35f5-4050-8adf-476f584dc5f2",
+      "name": "BuildCompletionMessage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1936,
+        304
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "ScheduleTrigger": {
+      "main": [
+        [
+          {
+            "node": "GetUnusedThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetUnusedThemes": {
+      "main": [
+        [
+          {
+            "node": "CheckUnusedThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CheckUnusedThemes": {
+      "main": [
+        [
+          {
+            "node": "RandomThemeSelection",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GetAllThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetAllThemes": {
+      "main": [
+        [
+          {
+            "node": "BuildThemePrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildThemePrompt": {
+      "main": [
+        [
+          {
+            "node": "GenerateThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerateThemes": {
+      "main": [
+        [
+          {
+            "node": "ParseThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseThemes": {
+      "main": [
+        [
+          {
+            "node": "AppendThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AppendThemes": {
+      "main": [
+        [
+          {
+            "node": "GetUnusedThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RandomThemeSelection": {
+      "main": [
+        [
+          {
+            "node": "BuildArticlePrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildArticlePrompt": {
+      "main": [
+        [
+          {
+            "node": "GenerateArticle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerateArticle": {
+      "main": [
+        [
+          {
+            "node": "ParseArticleJSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseArticleJSON": {
+      "main": [
+        [
+          {
+            "node": "ExtractImageMarkers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractImageMarkers": {
+      "main": [
+        [
+          {
+            "node": "GenerateThumbnail",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PrepareColumnData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerateThumbnail": {
+      "main": [
+        [
+          {
+            "node": "ProcessThumbnail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ProcessThumbnail": {
+      "main": [
+        [
+          {
+            "node": "UploadThumbnail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UploadThumbnail": {
+      "main": [
+        [
+          {
+            "node": "PrepareColumnData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareColumnData": {
+      "main": [
+        [
+          {
+            "node": "PostColumn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostColumn": {
+      "main": [
+        [
+          {
+            "node": "UpdateThemeUsed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpdateThemeUsed": {
+      "main": [
+        [
+          {
+            "node": "BuildCompletionMessage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e97fc403-58b6-4ea0-933e-47f8f442583a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fefffd21e64fa94994bb4bf38b5a050c59f6cf28bd3cad9da0a5804220d9e97f"
+  },
+  "id": "lPXWsFe187M5lr0T",
+  "tags": []
+}
+

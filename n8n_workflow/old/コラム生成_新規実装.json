@@ -1,0 +1,997 @@
+{
+  "name": "コラム生成（Slack + Web連携）",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📋 コラム生成ワークフロー\n\n**概要**: Slack または Webサイトからリクエストを受け取り、テーマ案を生成・承認後に記事を自動生成します。\n\n**トリガー**:\n1. SlackTrigger: #column-request のメンション\n2. WebhookTrigger: Webサイトからのリクエスト\n\n**フロー**:\n```\nメンション/Webhook → テーマ案生成 → Slackで承認待ち\n        ↓\n承認 → 記事生成 → スレッド内で通知\n```\n\n**承認方式**: Slack sendAndWait",
+        "height": 400,
+        "width": 450,
+        "color": 4
+      },
+      "id": "sticky-overview",
+      "name": "📋 概要",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-200, -400]
+    },
+    {
+      "parameters": {
+        "trigger": ["app_mention"],
+        "channelId": {
+          "__rl": true,
+          "value": "C0A0AAKQ7D1",
+          "mode": "id",
+          "cachedResultName": "column-request"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.slackTrigger",
+      "typeVersion": 1,
+      "position": [280, -160],
+      "id": "slack-trigger-001",
+      "name": "SlackTrigger",
+      "webhookId": "cac3afd2-2feb-445f-a792-c7c10d26319d",
+      "credentials": {
+        "slackApi": {
+          "id": "kahTvH10blaEP2kb",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// SlackTriggerからのメッセージを処理\nconst message = $json.text || $json.event?.text || '';\nconst userId = $json.user || $json.event?.user || '';\nconst channelId = $json.channel || $json.event?.channel || '';\nconst ts = $json.ts || $json.event?.ts || '';\n\nconsole.log('📥 Slackメッセージ受信:', message);\n\n// ボットメンションを除去してリクエストテキストを抽出\nlet requestText = message.replace(/<@[A-Z0-9]+>/g, '').trim();\n\nif (!requestText || requestText.length === 0) {\n  throw new Error('リクエスト内容が空です。テーマの内容を入力してください。');\n}\n\nconsole.log('✅ リクエスト抽出:', requestText);\n\nreturn [{\n  json: {\n    requestText: requestText,\n    source: 'slack',\n    userId: userId,\n    channelId: channelId,\n    messageTs: ts,\n    parent_thread_ts: ts,\n    originalMessage: message\n  }\n}];"
+      },
+      "id": "extract-slack-001",
+      "name": "ExtractSlackRequest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, -160]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "column-request",
+        "options": {}
+      },
+      "id": "webhook-trigger-001",
+      "name": "WebhookTrigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [280, 80],
+      "webhookId": "column-request-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Webhookからリクエストテキストを抽出\nconst body = $json.body || $json;\nconst requestText = body.requestText || body.request || '';\n\nconsole.log('📥 Webhookリクエスト受信:', requestText);\n\nif (!requestText || requestText.length === 0) {\n  throw new Error('リクエスト内容が空です。');\n}\n\nconst channelId = 'column-request';\n\nconsole.log('✅ Webリクエスト抽出:', requestText);\n\nreturn [{\n  json: {\n    requestText: requestText,\n    source: 'web',\n    userId: 'web-user',\n    channelId: channelId,\n    messageTs: '',\n    parent_thread_ts: '',\n    originalMessage: requestText\n  }\n}];"
+      },
+      "id": "extract-webhook-001",
+      "name": "ExtractWebhookRequest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 80]
+    },
+    {
+      "parameters": {},
+      "id": "merge-requests-001",
+      "name": "MergeRequests",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [760, -40]
+    },
+    {
+      "parameters": {
+        "jsCode": "const requestText = $json.requestText;\nconst source = $json.source;\n\nconst prompt = `あなたはポイ活・節約メディア「TokuSearch」の編集者です。\n\n以下のざっくりしたリクエストから、具体的なコラム記事のテーマ案を1〜3件生成してください。\n\n## リクエスト内容\n${requestText}\n\n## 出力形式（重要）\n以下のJSON形式のみを出力してください。説明文やコードブロックは不要です。\n\n{\n  \"themes\": [\n    {\n      \"no\": 1,\n      \"title\": \"テーマタイトル（30〜50文字程度、キャッチーに）\",\n      \"level\": \"初心者向け\",\n      \"description\": \"このテーマで書く記事の概要（50〜100文字）\"\n    }\n  ]\n}\n\n## テーマ設計ルール\n- リクエスト内容から1〜3件のテーマを抽出\n- 1つのリクエストに複数のトピックが含まれる場合は、それぞれ別テーマとして提案\n- タイトルは読者の興味を引く具体的な表現に\n- レベルは「初心者向け」「中級者以上向け」「上級者向け」「超ポイ活特化」から選択\n\n## 出力開始\nJSONのみを出力してください:`;\n\nreturn [{ json: { prompt, requestText, source, ...($json) } }];"
+      },
+      "id": "build-theme-prompt-001",
+      "name": "BuildThemePrompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, -40]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json.prompt}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [1240, -40],
+      "id": "generate-themes-001",
+      "name": "GenerateThemes",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gojn353h4HLDUzF2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Geminiのレスポンスからテーマ案を抽出\nconst rawText = $json.content.parts[0].text;\nconsole.log('📥 Gemini出力:', rawText.substring(0, 500));\n\n// JSONを抽出\nlet jsonString = rawText.trim();\njsonString = jsonString.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/i, '').trim();\n\nconst jsonStart = jsonString.indexOf('{');\nconst jsonEnd = jsonString.lastIndexOf('}');\n\nif (jsonStart === -1 || jsonEnd === -1) {\n  throw new Error('JSONが見つかりません: ' + rawText.substring(0, 200));\n}\n\njsonString = jsonString.substring(jsonStart, jsonEnd + 1);\n\nlet themesData;\ntry {\n  themesData = JSON.parse(jsonString);\n} catch (e) {\n  throw new Error('JSONパース失敗: ' + e.message);\n}\n\nconst themes = themesData.themes || [];\n\nif (themes.length === 0) {\n  throw new Error('テーマが生成されませんでした');\n}\n\nconsole.log(`✅ テーマ抽出完了: ${themes.length}件`);\n\n// 前のノードからのデータを引き継ぐ\nconst prevData = $items('BuildThemePrompt')[0].json;\n\nreturn [{\n  json: {\n    themes: themes,\n    requestText: prevData.requestText,\n    source: prevData.source,\n    userId: prevData.userId,\n    channelId: prevData.channelId,\n    messageTs: prevData.messageTs,\n    parent_thread_ts: prevData.parent_thread_ts\n  }\n}];"
+      },
+      "id": "parse-themes-001",
+      "name": "ParseThemes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1480, -40]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Slack Block Kit形式でメッセージを構築（承認・非承認ボタン付き）\nconst themes = $json.themes;\nconst source = $json.source;\nconst requestText = $json.requestText;\nconst requestId = $json.messageTs || `req_${Date.now()}`;\n\n// テーマ案のテキストを構築\nlet themesText = '';\nif (source === 'web') {\n  themesText += `🌐 *Webサイトからリクエスト*\\n`;\n  themesText += `「${requestText}」\\n\\n`;\n}\n\nthemesText += `📝 *テーマ案（${themes.length}件）*\\n\\n`;\n\nthemes.forEach((theme, index) => {\n  themesText += `*${index + 1}. ${theme.title}*\\n`;\n  themesText += `   レベル: ${theme.level}\\n`;\n  themesText += `   ${theme.description}\\n\\n`;\n});\n\nthemesText += `---\\n`;\nthemesText += `上記のテーマ案で記事を生成しますか？`;\n\n// Block Kit形式のJSONを構築\nconst blocks = [\n  {\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: themesText\n    }\n  },\n  {\n    type: 'actions',\n    elements: [\n      {\n        type: 'button',\n        text: {\n          type: 'plain_text',\n          text: '✅ 承認'\n        },\n        style: 'primary',\n        value: JSON.stringify({ action: 'approve', requestId: requestId })\n      },\n      {\n        type: 'button',\n        text: {\n          type: 'plain_text',\n          text: '❌ 非承認'\n        },\n        style: 'danger',\n        value: JSON.stringify({ action: 'reject', requestId: requestId })\n      }\n    ]\n  }\n];\n\nreturn [{\n  json: {\n    slackMessage: themesText,\n    slackBlocks: JSON.stringify(blocks),\n    themes: themes,\n    themesJson: JSON.stringify(themes),\n    requestText: $json.requestText,\n    requestId: requestId,\n    source: $json.source,\n    userId: $json.userId,\n    channelId: $json.channelId,\n    messageTs: $json.messageTs,\n    parent_thread_ts: $json.parent_thread_ts\n  }\n}];"
+      },
+      "id": "format-message-001",
+      "name": "FormatSlackMessage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1720, -40]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Google Sheetsに保存するためのデータを整形（承認後のデータ取得用に全データを保持）\nconst data = $items('FormatSlackMessage')[0].json;\nconst now = new Date().toISOString();\n\nconst saveData = {\n  request_id: data.messageTs || `req_${Date.now()}`,\n  source: data.source || 'slack',\n  channel_id: data.channelId || '',\n  thread_ts: data.messageTs || '',\n  original_text: data.requestText || '',\n  themes_json: data.themesJson || '[]',\n  status: 'pending',\n  created_at: now,\n  parent_thread_ts: data.parent_thread_ts || data.messageTs || '',\n  // 承認後のデータ取得用に全データを保持\n  themes: data.themes || [],\n  themesJson: data.themesJson || '[]',\n  slackMessage: data.slackMessage || 'テーマ案の承認をお願いします',\n  slackBlocks: data.slackBlocks || '[]',\n  channelId: data.channelId || '',\n  requestText: data.requestText || ''\n};\n\nconsole.log('✅ SaveRequest用データ準備完了:', JSON.stringify(saveData, null, 2));\n\nreturn [{ json: { ...saveData, ...data } }];"
+      },
+      "id": "prepare-save-data-001",
+      "name": "PrepareSaveData",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1960, -40]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "list",
+          "cachedResultName": "TokuSearch"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "column_requests",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "save-request-001",
+      "name": "SaveRequest",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [2200, -40],
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Wait for Approval の前にデータを保持（sendAndWaitはワークフローを一時停止するため）\nconst data = $json;\n\n// 承認後に使用するために全データを保持\nconst preservedData = {\n  themes: data.themes || [],\n  themesJson: data.themesJson || '[]',\n  slackBlocks: data.slackBlocks || '[]',\n  slackMessage: data.slackMessage || 'テーマ案の承認をお願いします',\n  channelId: data.channelId || '',\n  requestText: data.requestText || '',\n  source: data.source || 'slack',\n  userId: data.userId || '',\n  messageTs: data.messageTs || '',\n  parent_thread_ts: data.parent_thread_ts || '',\n  requestId: data.requestId || ''\n};\n\nconsole.log('💾 データを保持しました:', JSON.stringify(preservedData, null, 2));\nconsole.log('📝 slackMessage:', preservedData.slackMessage);\nconsole.log('📦 slackBlocks:', preservedData.slackBlocks);\n\n// 元のデータと保持データの両方を返す\nreturn [{ json: { ...data, ...preservedData, preservedData: preservedData } }];"
+      },
+      "id": "preserve-data-001",
+      "name": "PreserveData",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, -40]
+    },
+    {
+      "parameters": {
+        "jsCode": "// PostApprovalMessage用にデータを準備（textフィールドを確実に設定）\nconst data = $json;\n\n// slackMessageを確実に取得\nlet slackMessage = data.slackMessage || data.preservedData?.slackMessage || '';\n\n// slackMessageが空の場合、テーマから生成\nif (!slackMessage || slackMessage === '') {\n  const themes = data.themes || (data.themesJson ? JSON.parse(data.themesJson) : []) || [];\n  slackMessage = `📝 *テーマ案（${themes.length}件）*\\n\\n`;\n  themes.forEach((theme, index) => {\n    slackMessage += `*${index + 1}. ${theme.title}*\\n`;\n    slackMessage += `   レベル: ${theme.level}\\n`;\n    slackMessage += `   ${theme.description}\\n\\n`;\n  });\n  slackMessage += `---\\n上記のテーマ案で記事を生成しますか？`;\n}\n\n// slackBlocksを確実に取得\nlet slackBlocks = data.slackBlocks || data.preservedData?.slackBlocks || '[]';\n\n// slackBlocksが空の場合、生成\nif (!slackBlocks || slackBlocks === '[]') {\n  const themes = data.themes || (data.themesJson ? JSON.parse(data.themesJson) : []) || [];\n  const requestId = data.requestId || data.messageTs || `req_${Date.now()}`;\n  \n  let themesText = slackMessage;\n  \n  const blocks = [\n    {\n      type: 'section',\n      text: {\n        type: 'mrkdwn',\n        text: themesText\n      }\n    },\n    {\n      type: 'actions',\n      elements: [\n        {\n          type: 'button',\n          text: {\n            type: 'plain_text',\n            text: '✅ 承認'\n          },\n          style: 'primary',\n          value: JSON.stringify({ action: 'approve', requestId: requestId })\n        },\n        {\n          type: 'button',\n          text: {\n            type: 'plain_text',\n            text: '❌ 非承認'\n          },\n          style: 'danger',\n          value: JSON.stringify({ action: 'reject', requestId: requestId })\n        }\n      ]\n    }\n  ];\n  \n  slackBlocks = JSON.stringify(blocks);\n}\n\nconsole.log('📝 slackMessage:', slackMessage);\nconsole.log('📦 slackBlocks:', slackBlocks);\n\nreturn [{\n  json: {\n    ...data,\n    slackMessage: slackMessage,\n    slackBlocks: slackBlocks,\n    text: slackMessage // Slackノード用にtextも設定\n  }\n}];"
+      },
+      "id": "prepare-slack-message-001",
+      "name": "PrepareSlackMessage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2440, -40]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $json.channelId || '#column-request' }}",
+          "mode": "id"
+        },
+        "message": "={{ $json.text || $json.slackMessage || 'テーマ案の承認をお願いします' }}",
+        "operation": "sendAndWait",
+        "options": {
+          "limitWaitTime": {
+            "values": {
+              "resumeUnit": "days"
+            }
+          }
+        },
+        "authentication": "oAuth2"
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [2680, -40],
+      "id": "post-approval-message-001",
+      "name": "Wait for Approval",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-approved",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-approved-001",
+      "name": "If Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [3400, -40]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-approved",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-approved-001",
+      "name": "If Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2680, -40]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 承認された場合、保持されたデータからテーマを取得\nconst approvalData = $json;\n\n// PreserveDataノードで保持したデータを取得\nconst preservedData = $items('PreserveData')[0]?.json?.preservedData || $items('PreserveData')[0]?.json;\n\nif (!preservedData) {\n  console.log('📥 承認データ全体:', JSON.stringify(approvalData, null, 2));\n  console.log('📥 PreserveDataノードのデータ:', JSON.stringify($items('PreserveData')[0]?.json, null, 2));\n  throw new Error('保持されたデータが見つかりませんでした');\n}\n\n// テーマデータを取得\nlet themes = [];\nif (preservedData.themes && Array.isArray(preservedData.themes)) {\n  themes = preservedData.themes;\n} else if (preservedData.themesJson) {\n  try {\n    themes = JSON.parse(preservedData.themesJson);\n  } catch (e) {\n    console.log('themesJson解析エラー:', e.message);\n  }\n}\n\nif (themes.length === 0) {\n  throw new Error('テーマデータが見つかりませんでした。preservedData: ' + JSON.stringify(preservedData));\n}\n\nconst channelId = preservedData.channelId || '';\nconst threadTs = preservedData.parent_thread_ts || '';\n\nconsole.log('✅ 承認されました。テーマ数:', themes.length);\nconsole.log('📊 テーマデータ:', JSON.stringify(themes, null, 2));\n\nreturn [{\n  json: {\n    themes: themes,\n    selectedThemes: themes,\n    channelId: channelId,\n    threadTs: threadTs,\n    requestData: preservedData\n  }\n}];"
+      },
+      "id": "prepare-article-generation-001",
+      "name": "PrepareArticleGeneration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3400, -40]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $json.channelId }}",
+          "mode": "id"
+        },
+        "text": "✅ *{{ $json.selectedThemes.length }}件の記事生成を開始します...*",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true,
+          "thread_ts": "={{ $json.threadTs }}"
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [3160, -40],
+      "id": "notify-start-001",
+      "name": "NotifyStart",
+      "credentials": {
+        "slackApi": {
+          "id": "kahTvH10blaEP2kb",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 承認されたテーマを個別に出力（ループ用）\nconst data = $json;\nconst themes = data.selectedThemes || [];\n\nif (themes.length === 0) {\n  throw new Error('承認されたテーマがありません');\n}\n\nreturn themes.map((theme, index) => ({\n  json: {\n    theme: theme,\n    themeIndex: index,\n    totalThemes: themes.length,\n    channelId: data.channelId,\n    threadTs: data.threadTs,\n    requestData: data.requestData\n  }\n}));"
+      },
+      "id": "split-themes-001",
+      "name": "SplitThemes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3400, -40]
+    },
+    {
+      "parameters": {
+        "jsCode": "const theme = $json.theme;\n\nconst prompt = `\nあなたはJSON生成の専門家です。有効なJSONオブジェクトのみを出力してください。\n\n## 記事情報\n- タイトル: ${theme.title}\n- レベル: ${theme.level}\n- 概要: ${theme.description || ''}\n\n## 重要なルール\n1. JSONオブジェクトのみを出力（マークダウンのコードブロック、説明文は不要）\n2. { で始まり } で終わること\n3. content_markdown内の改行は \\\\n を使用\n4. 特殊文字（引用符、バックスラッシュ）は適切にエスケープ\n5. content_markdownは2500〜3500文字程度\n6. 重要な情報には <mark>テキスト</mark> を使用\n7. 強調には **太字** を使用\n\n## 出力するJSONの構造\n{\n  \"title\": \"${theme.title}\",\n  \"description\": \"記事の要約（80〜120文字）\",\n  \"content_markdown\": \"記事本文（Markdown形式）\",\n  \"category\": \"以下から1つ選択: ポイント活用, クレジットカード, 節約術, 旅行, キャッシュレス, 家計管理, ふるさと納税\",\n  \"tags\": \"タグ1,タグ2,タグ3\"\n}\n\n## 記事の構成\n1. **導入**（読者の悩みと解決策の提示）\n2. **基本の考え方**（コアコンセプト）\n3. **具体的なステップ**（実践方法）\n4. **注意点・よくある失敗**\n5. **まとめ**\n\n## 出力開始\nJSONのみを出力してください:\n`.trim();\n\nreturn [{ json: { prompt, theme, ...$json } }];"
+      },
+      "id": "build-article-prompt-001",
+      "name": "BuildArticlePrompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3640, -40]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json.prompt}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [3880, -40],
+      "id": "generate-article-001",
+      "name": "GenerateArticle",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gojn353h4HLDUzF2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.content.parts[0].text;\nconsole.log('📥 LLM出力（先頭500文字）:', rawText.substring(0, 500));\n\nlet jsonString = rawText.trim();\njsonString = jsonString.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/i, '').trim();\n\nconst jsonStart = jsonString.indexOf('{');\nconst jsonEnd = jsonString.lastIndexOf('}');\n\nif (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {\n  throw new Error('JSONの { } が見つかりません');\n}\n\njsonString = jsonString.substring(jsonStart, jsonEnd + 1);\n\nlet article;\ntry {\n  const cleaned = jsonString.replace(/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/g, '');\n  article = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error('JSONパース失敗: ' + e.message);\n}\n\nconst prevData = $items('BuildArticlePrompt')[0].json;\nconst theme = prevData.theme;\n\nconst result = {\n  ...article,\n  title: theme.title,\n  theme: theme,\n  channelId: prevData.channelId,\n  threadTs: prevData.threadTs,\n  themeIndex: prevData.themeIndex,\n  totalThemes: prevData.totalThemes,\n  requestData: prevData.requestData\n};\n\nconsole.log('✅ 記事パース完了:', result.title);\n\nreturn [{ json: result }];"
+      },
+      "id": "parse-article-001",
+      "name": "ParseArticleJSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4120, -40]
+    },
+    {
+      "parameters": {
+        "jsCode": "const articleData = $json;\n\nconst slug = articleData.title\n  .toLowerCase()\n  .replace(/[^a-z0-9\\u3040-\\u309f\\u30a0-\\u30ff\\u4e00-\\u9faf]+/g, '-')\n  .replace(/^-+|-+$/g, '');\n\nconst content_html = articleData.content_markdown\n  .replace(/^### (.*$)/gim, '<h3>$1</h3>')\n  .replace(/^## (.*$)/gim, '<h2>$1</h2>')\n  .replace(/^# (.*$)/gim, '<h1>$1</h1>')\n  .replace(/\\*\\*(.*?)\\*\\*/gim, '<strong>$1</strong>')\n  .replace(/\\*(.*?)\\*/gim, '<em>$1</em>')\n  .replace(/\\n\\n/gim, '</p><p>')\n  .replace(/\\n/gim, '<br>');\n\nconst columnData = {\n  slug: slug,\n  title: articleData.title,\n  description: articleData.description,\n  content_markdown: articleData.content_markdown,\n  content_html: '<p>' + content_html + '</p>',\n  category: articleData.category,\n  tags: articleData.tags,\n  thumbnail_url: '',\n  author: 'TokuSearch AI',\n  status: 'published',\n  is_featured: false,\n  channelId: articleData.channelId,\n  threadTs: articleData.threadTs,\n  themeIndex: articleData.themeIndex,\n  totalThemes: articleData.totalThemes,\n  requestData: articleData.requestData\n};\n\nconsole.log('✅ データ準備完了:', columnData.title);\n\nreturn [{ json: columnData }];"
+      },
+      "id": "prepare-data-001",
+      "name": "PrepareColumnData",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4360, -40]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tokusearch.vercel.app/api/admin/columns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { slug: $json.slug, title: $json.title, description: $json.description, content_markdown: $json.content_markdown, content_html: $json.content_html, category: $json.category, tags: $json.tags, thumbnail_url: $json.thumbnail_url, author: $json.author, status: $json.status, is_featured: $json.is_featured } }}",
+        "options": {}
+      },
+      "id": "post-column-001",
+      "name": "PostColumn",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4600, -40],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "RT6aq4TB1Vj8V2Tn",
+          "name": "Credential Name"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiResponse = $json;\nconst prevData = $items('PrepareColumnData')[0].json;\n\nconst url = `https://tokusearch.vercel.app/columns/${prevData.slug}`;\n\nreturn [{\n  json: {\n    title: prevData.title,\n    url: url,\n    slug: prevData.slug,\n    channelId: prevData.channelId,\n    threadTs: prevData.threadTs,\n    themeIndex: prevData.themeIndex,\n    totalThemes: prevData.totalThemes,\n    requestData: prevData.requestData\n  }\n}];"
+      },
+      "id": "build-result-001",
+      "name": "BuildResult",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4840, -40]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.all().map(item => item.json);\n\nlet message = `🎉 *記事生成完了！*\\n\\n`;\n\nresults.forEach((result, index) => {\n  message += `${index + 1}. *${result.title}*\\n`;\n  message += `   ${result.url}\\n\\n`;\n});\n\nconst firstResult = results[0];\n\nreturn [{\n  json: {\n    text: message,\n    channelId: firstResult.channelId,\n    threadTs: firstResult.threadTs,\n    requestData: firstResult.requestData\n  }\n}];"
+      },
+      "id": "aggregate-results-001",
+      "name": "AggregateResults",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5080, -40]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $json.channelId }}",
+          "mode": "id"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true,
+          "thread_ts": "={{ $json.threadTs }}"
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [5320, -40],
+      "id": "notify-complete-001",
+      "name": "NotifyComplete",
+      "credentials": {
+        "slackApi": {
+          "id": "kahTvH10blaEP2kb",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "list",
+          "cachedResultName": "TokuSearch"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "column_requests",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "parent_thread_ts": "={{ $items('FormatSlackMessage')[0].json.parent_thread_ts }}",
+            "status": "completed"
+          },
+          "matchingColumns": ["parent_thread_ts"]
+        },
+        "options": {}
+      },
+      "id": "update-status-001",
+      "name": "UpdateStatus",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [5560, -40],
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 非承認時の処理：別のパターンのテーマを生成\nconst approvalData = $json;\nconst saveData = $items('SaveRequest')[0]?.json;\n\nif (!saveData) {\n  throw new Error('SaveRequestのデータが見つかりませんでした');\n}\n\n// 再試行回数を確認（無限ループ防止）\nconst retryCount = saveData.retryCount || 0;\nconst maxRetries = 2; // 最大2回まで再試行\n\nif (retryCount >= maxRetries) {\n  return [{\n    json: {\n      message: '❌ *承認が拒否されました*\\n最大再試行回数に達しました。別のリクエストを送信してください。',\n      channelId: saveData.channelId || saveData.channel_id || '',\n      threadTs: saveData.parent_thread_ts || saveData.thread_ts || '',\n      shouldStop: true\n    }\n  }];\n}\n\n// 元のリクエストテキストを取得\nconst originalRequest = saveData.requestText || saveData.original_text || '';\n\nif (!originalRequest) {\n  return [{\n    json: {\n      message: '❌ *承認が拒否されました*',\n      channelId: saveData.channelId || saveData.channel_id || '',\n      threadTs: saveData.parent_thread_ts || saveData.thread_ts || '',\n      shouldStop: true\n    }\n  }];\n}\n\n// 別のアプローチでテーマを再生成するためのデータを返す\nreturn [{\n  json: {\n    requestText: originalRequest,\n    source: saveData.source || 'slack',\n    userId: saveData.userId || '',\n    channelId: saveData.channelId || saveData.channel_id || '',\n    messageTs: saveData.messageTs || '',\n    parent_thread_ts: saveData.parent_thread_ts || saveData.thread_ts || '',\n    retryCount: retryCount + 1,\n    isRetry: true,\n    shouldStop: false\n  }\n}];"
+      },
+      "id": "handle-rejection-001",
+      "name": "HandleRejection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2920, 80]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-should-stop",
+              "leftValue": "={{ $json.shouldStop }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-should-stop-001",
+      "name": "ShouldStop?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [3160, 80]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $json.channelId }}",
+          "mode": "id"
+        },
+        "text": "={{ $json.message }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true,
+          "thread_ts": "={{ $json.threadTs }}"
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [3400, 80],
+      "id": "notify-rejected-001",
+      "name": "NotifyRejected",
+      "credentials": {
+        "slackApi": {
+          "id": "kahTvH10blaEP2kb",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 再試行時：別のアプローチでテーマを生成\nconst data = $json;\n\n// 再試行回数に応じてプロンプトを変更\nconst retryCount = data.retryCount || 0;\nlet approach = '';\n\nif (retryCount === 1) {\n  approach = '\\n\\n## 重要：前回のテーマ案が承認されませんでした。\\n以下の点を考慮して、**異なるアプローチ**でテーマを提案してください：\\n- より具体的で実践的な内容にする\\n- 読者の興味を引く別の角度からアプローチする\\n- より初心者向けの内容にする';\n} else if (retryCount === 2) {\n  approach = '\\n\\n## 重要：2回目のテーマ案も承認されませんでした。\\n以下の点を考慮して、**全く異なるアプローチ**でテーマを提案してください：\\n- より実用的で即効性のある内容にする\\n- 読者がすぐに行動できる具体的な方法を提案する\\n- より専門的で深い内容にする';\n}\n\nconst prompt = `あなたはポイ活・節約メディア「TokuSearch」の編集者です。\n\n以下のざっくりしたリクエストから、具体的なコラム記事のテーマ案を1〜3件生成してください。${approach}\n\n## リクエスト内容\n${data.requestText}\n\n## 出力形式（重要）\n以下のJSON形式のみを出力してください。説明文やコードブロックは不要です。\n\n{\n  \"themes\": [\n    {\n      \"no\": 1,\n      \"title\": \"テーマタイトル（30〜50文字程度、キャッチーに）\",\n      \"level\": \"初心者向け\",\n      \"description\": \"このテーマで書く記事の概要（50〜100文字）\"\n    }\n  ]\n}\n\n## テーマ設計ルール\n- リクエスト内容から1〜3件のテーマを抽出\n- 1つのリクエストに複数のトピックが含まれる場合は、それぞれ別テーマとして提案\n- タイトルは読者の興味を引く具体的な表現に\n- レベルは「初心者向け」「中級者以上向け」「上級者向け」「超ポイ活特化」から選択\n\n## 出力開始\nJSONのみを出力してください:`;\n\nreturn [{ json: { prompt, ...data } }];"
+      },
+      "id": "build-retry-prompt-001",
+      "name": "BuildRetryPrompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3400, 160]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger-001",
+      "name": "ErrorTrigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [280, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const execution = $json.execution || {};\nconst workflow = $json.workflow || {};\n\nconst nodeName = execution.lastNodeExecuted || 'Unknown';\nconst errorData = execution.error || {};\nconst errorMessage = errorData.message || 'エラーが発生しました';\n\nconst message = `❌ *コラム生成エラー*\\n\\nノード: ${nodeName}\\nエラー: ${errorMessage}\\n時刻: ${new Date().toISOString()}`;\n\nreturn [{ json: { text: message } }];"
+      },
+      "id": "build-error-001",
+      "name": "BuildErrorMessage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 320]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#column-request",
+          "mode": "name"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": true,
+          "mrkdwn": true
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [760, 320],
+      "id": "notify-error-001",
+      "name": "NotifyError",
+      "credentials": {
+        "slackApi": {
+          "id": "kahTvH10blaEP2kb",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "SlackTrigger": {
+      "main": [
+        [
+          {
+            "node": "ExtractSlackRequest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractSlackRequest": {
+      "main": [
+        [
+          {
+            "node": "MergeRequests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WebhookTrigger": {
+      "main": [
+        [
+          {
+            "node": "ExtractWebhookRequest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractWebhookRequest": {
+      "main": [
+        [
+          {
+            "node": "MergeRequests",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "MergeRequests": {
+      "main": [
+        [
+          {
+            "node": "BuildThemePrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildThemePrompt": {
+      "main": [
+        [
+          {
+            "node": "GenerateThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerateThemes": {
+      "main": [
+        [
+          {
+            "node": "ParseThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseThemes": {
+      "main": [
+        [
+          {
+            "node": "FormatSlackMessage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FormatSlackMessage": {
+      "main": [
+        [
+          {
+            "node": "PrepareSaveData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareSaveData": {
+      "main": [
+        [
+          {
+            "node": "SaveRequest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveRequest": {
+      "main": [
+        [
+          {
+            "node": "PreserveData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PreserveData": {
+      "main": [
+        [
+          {
+            "node": "PrepareSlackMessage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareSlackMessage": {
+      "main": [
+        [
+          {
+            "node": "Wait for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Approval": {
+      "main": [
+        [
+          {
+            "node": "If Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Approved?": {
+      "main": [
+        [
+          {
+            "node": "PrepareArticleGeneration",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleRejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleRejection": {
+      "main": [
+        [
+          {
+            "node": "ShouldStop?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ShouldStop?": {
+      "main": [
+        [
+          {
+            "node": "NotifyRejected",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BuildRetryPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildRetryPrompt": {
+      "main": [
+        [
+          {
+            "node": "GenerateThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareArticleGeneration": {
+      "main": [
+        [
+          {
+            "node": "NotifyStart",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NotifyStart": {
+      "main": [
+        [
+          {
+            "node": "SplitThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SplitThemes": {
+      "main": [
+        [
+          {
+            "node": "BuildArticlePrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildArticlePrompt": {
+      "main": [
+        [
+          {
+            "node": "GenerateArticle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerateArticle": {
+      "main": [
+        [
+          {
+            "node": "ParseArticleJSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseArticleJSON": {
+      "main": [
+        [
+          {
+            "node": "PrepareColumnData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareColumnData": {
+      "main": [
+        [
+          {
+            "node": "PostColumn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostColumn": {
+      "main": [
+        [
+          {
+            "node": "BuildResult",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildResult": {
+      "main": [
+        [
+          {
+            "node": "AggregateResults",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AggregateResults": {
+      "main": [
+        [
+          {
+            "node": "NotifyComplete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NotifyComplete": {
+      "main": [
+        [
+          {
+            "node": "UpdateStatus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ErrorTrigger": {
+      "main": [
+        [
+          {
+            "node": "BuildErrorMessage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildErrorMessage": {
+      "main": [
+        [
+          {
+            "node": "NotifyError",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "column-generation-v2.0.0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fefffd21e64fa94994bb4bf38b5a050c59f6cf28bd3cad9da0a5804220d9e97f"
+  },
+  "id": "column-generation-slack-web"
+}
+

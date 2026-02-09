@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html class="dark" lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>毎日をもっと、おトクに。 | Daily Rewards</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100;300;400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#D4A373",
+                        "accent": "#E9EDC6",
+                        "background-dark": "#120D0B",
+                    },
+                    fontFamily: {
+                        "display": ["Noto Sans JP", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        :root {
+            --bg-gradient: linear-gradient(180deg, #1A1412 0%, #2D1B15 100%);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+        body {
+            background: var(--bg-gradient);
+        }
+        .glass-morphism {
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+        }
+        .text-gradient-gold {
+            background: linear-gradient(180deg, #FFFFFF 0%, #D4A373 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .mockup-shadow {
+            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.6);
+        }
+        .float-icon {
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body class="font-display text-slate-200 antialiased overflow-x-hidden min-h-screen">
+<div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+<div class="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-orange-900/10 rounded-full blur-[120px]"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-amber-900/10 rounded-full blur-[100px]"></div>
+</div>
+<div class="relative z-10 flex min-h-screen flex-col items-center justify-between px-6 py-8 lg:py-12">
+<header class="w-full flex justify-center items-center gap-2.5 transition-opacity hover:opacity-80">
+<div class="w-8 h-8 bg-gradient-to-br from-primary to-orange-700 rounded-lg flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-white text-[20px] font-light">redeem</span>
+</div>
+<span class="text-lg font-medium tracking-tight text-white/90">Daily Rewards</span>
+</header>
+<main class="flex flex-col items-center text-center w-full max-w-4xl py-12 lg:py-20">
+<div class="space-y-6 mb-16 lg:mb-24">
+<h1 class="text-gradient-gold text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.2]">
+                    毎日をもっと、<br class="md:hidden"/>おトクに。
+                </h1>
+<p class="text-white/50 text-base md:text-xl font-light max-w-xl mx-auto leading-relaxed">
+                    新しくなったサービスで、あなたの暮らしを豊かに。<br class="hidden md:block"/>
+                    まもなく公開予定です。
+                </p>
+</div>
+<div class="relative w-full max-w-[320px] md:max-w-[400px] aspect-[4/5] flex items-center justify-center mb-16 lg:mb-24">
+<div class="glass-morphism w-[240px] h-[480px] md:w-[280px] md:h-[560px] rounded-[3rem] p-4 relative overflow-hidden mockup-shadow border-white/10">
+<div class="w-12 h-1 bg-white/20 rounded-full mx-auto mb-10"></div>
+<div class="space-y-6 px-2">
+<div class="h-32 w-full bg-white/5 rounded-2xl flex items-center justify-center">
+<span class="material-symbols-outlined text-white/5 text-5xl">auto_awesome</span>
+</div>
+<div class="space-y-3">
+<div class="h-2 w-full bg-white/10 rounded-full"></div>
+<div class="h-2 w-2/3 bg-white/10 rounded-full"></div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div class="h-20 bg-white/5 rounded-xl border border-white/5"></div>
+<div class="h-20 bg-white/5 rounded-xl border border-white/5"></div>
+</div>
+<div class="h-12 w-full bg-primary/20 rounded-xl border border-primary/20"></div>
+</div>
+</div>
+<div class="absolute top-[15%] -right-4 md:-right-12 glass-morphism p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] rotate-6 float-icon border-white/10">
+<div class="bg-orange-400/10 p-2 md:p-3 rounded-xl md:rounded-2xl">
+<span class="material-symbols-outlined text-3xl md:text-5xl text-primary">local_mall</span>
+</div>
+</div>
+<div class="absolute bottom-[20%] -left-4 md:-left-12 glass-morphism p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] -rotate-12 float-icon border-white/10">
+<div class="bg-amber-400/10 p-2 md:p-3 rounded-xl md:rounded-2xl">
+<span class="material-symbols-outlined text-3xl md:text-5xl text-accent">payments</span>
+</div>
+</div>
+</div>
+<div class="w-full flex flex-col items-center">
+<p class="text-white/30 text-[10px] md:text-xs tracking-[0.3em] font-medium uppercase mb-8">LAUNCHING IN</p>
+<div class="flex gap-4 md:gap-8 justify-center items-start">
+<div class="flex flex-col items-center w-16 md:w-20">
+<div class="glass-morphism w-full aspect-square flex items-center justify-center rounded-2xl mb-3 border-white/5">
+<span class="text-2xl md:text-3xl font-light text-white/90">08</span>
+</div>
+<span class="text-white/30 text-[10px] md:text-xs font-medium tracking-widest">日</span>
+</div>
+<div class="flex flex-col items-center w-16 md:w-20">
+<div class="glass-morphism w-full aspect-square flex items-center justify-center rounded-2xl mb-3 border-white/5">
+<span class="text-2xl md:text-3xl font-light text-white/90">12</span>
+</div>
+<span class="text-white/30 text-[10px] md:text-xs font-medium tracking-widest">時間</span>
+</div>
+<div class="flex flex-col items-center w-16 md:w-20">
+<div class="glass-morphism w-full aspect-square flex items-center justify-center rounded-2xl mb-3 border-white/5">
+<span class="text-2xl md:text-3xl font-light text-white/90">45</span>
+</div>
+<span class="text-white/30 text-[10px] md:text-xs font-medium tracking-widest">分</span>
+</div>
+<div class="flex flex-col items-center w-16 md:w-20">
+<div class="glass-morphism w-full aspect-square flex items-center justify-center rounded-2xl mb-3 border-primary/20">
+<span class="text-2xl md:text-3xl font-light text-primary">30</span>
+</div>
+<span class="text-white/30 text-[10px] md:text-xs font-medium tracking-widest">秒</span>
+</div>
+</div>
+</div>
+</main>
+<footer class="w-full flex flex-col items-center py-4">
+<p class="text-white/20 text-[10px] md:text-xs font-light tracking-wider">
+                © 2024 Daily Rewards Inc. すべての人に、心地よい毎日を。
+            </p>
+</footer>
+</div>
+
+</body></html>

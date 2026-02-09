@@ -1,0 +1,207 @@
+{
+  "name": "【一時】TokuSearch大量データ収集（直近1ヶ月）",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// 直近1ヶ月の日付範囲を生成\nconst now = new Date();\nconst oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);\nconst formatDate = (date) => date.toISOString().slice(0, 10);\nconst startDate = formatDate(oneMonthAgo);\nconst endDate = formatDate(now);\n\nconsole.log(`📅 収集期間: ${startDate} 〜 ${endDate}`);\n\n// データ収集用プロンプト（改善版）\nconst prompt = `\n${startDate}〜${endDate} の期間にX(Twitter)で投稿された「お得情報」を収集し、以下のJSON配列形式で返してください。\n\n**重要**: 出力は純粋なJSONのみ。コードフェンス(\\`\\`\\`)や説明文は一切不要です。\n\n[\n{\n\"date\": \"YYYY-MM-DD\",\n\"tweet_created_at\": \"YYYY-MM-DDTHH:mm:ss.sssZ\",\n\"title\": \"お得情報の見出し\",\n\"summary\": \"短い要約（本文を凝縮）\",\n\"detail\": \"割引・還元の具体内容（率/額・上限・対象）\",\n\"steps\": \"利用/申込の手順（アプリ・クーポン・時間帯など）\",\n\"service\": \"対象サービス・店舗名\",\n\"url\": \"https://x.com/.../status/...\",\n\"source_name\": \"出典アカウント名\",\n\"source_id\": \"@handle\",\n\"expiration\": \"YYYY-MM-DD もしくは 期間の説明文 (終了済みはnull)\",\n\"conditions\": \"新規/既存/先着/抽選/回数など\",\n\"notes\": \"注意点・例外・備考\"\n}\n]\n\n# 収集ルール\n- tweet_created_atには、ツイートが投稿された日時をISO 8601形式で取得してください（例: \"2025-11-21T02:17:21.752Z\"）\n- 監視アカウントを優先しつつ、類似系統の信頼できるものも含める (フォロワー500以上)\n- 言い回しが違っても「内容が同じ」なら統合し1件にまとめる\n- 以下のいずれかが異なる場合は別件とする：\n  - 対象サービス/店舗\n  - 割引/還元の率・上限・期間\n  - 利用/申込手順（支払い手段・条件の差）\n- 数値は半角統一（例: 20%, 1000円, 上限1000ポイント）\n- 欠損は null を入れる（空文字 \"\" は使わない）\n- 同様の情報が複数あった場合は、フォロワー数が一番多い内容のurlを挿入する\n- 終了したキャンペーンは除外 (expirationが過去の日付、または「終了」「終了間近」「今日で終わり」含むものはnull)\n- 高額還元/割引 (10%以上、1000円以上) を優先\n- 信頼性低いもの (フォロワー50未満) は除外\n- 抽選で当選率が低いもの（当選者10000名以下）は除外\n- アカウントフォローやリポストを条件とするキャンペーンは除外\n- 投資関連（株、暗号資産、トレードなど）は除外\n- 重複内容は統合し、1件にまとめる\n- **TikTokに関する内容は除外**\n- 上場企業の公式アカウント情報は除外（個人インフルエンサーレベルの情報がほしい）\n- ◯◯を買うと1個無料などの、いわゆる「プライチ」は除外\n\n# 優先監視アカウント\nことはむ【お得×ポイ活】 @kotoham_pkt\nクーポメ @tosu5580\nかりん@医療脱毛マニア @buran_umeda\nたっくん @9kuIOQMh1T85626\nあんこ @an89no23\nちびうさ🐰@無給兎ブロガー @chibiusachi\nあくび@あくびジャパン @akubichan_sab\nあくび@育児の合間に副業あれこれ @akubichan62124\nあのひと@万博VIP CARD保有済 @2akautebon\nHalohalo｜旅行レジャー情報 @halohalo_travel\nともりPay @tomor1nn\nマネーの犬🐕 @ourmoneybook\nmao (まお)@ポイ活で家を買った主婦 @mao_otk_tw\nあきぽん @akipon229\nブルゾン@お得好き @BuruzonBBA\nakiko_lawson @akiko_lawson\nvtcosmetics_jp @vtcosmetics_jp\nTraicy（トライシー） @traicycom\n\n# 追加検索ルール\n- セマンティック検索で類似情報を補完: \"お得情報 キャンペーン 割引 クーポン ポイント 還元 MNP povo UQ JAL ANA ソラシド ウエル活 ポン活 ドリチケ Vポイント PayPay\"\n- キーワード検索で新鮮情報: \"(お得 OR キャンペーン OR 割引 OR クーポン OR ポイント OR 還元 OR JAL OR ANA OR ジェットスター OR ソラシド OR ウエル活 OR ポン活 OR ドリチケ OR MNP OR PayPay OR Vポイント) min_faves:5 since:${startDate} -TikTok -終了 -終わり -投資 -株 -暗号資産 -トレード\" limit:100\n`.trim();\n\nreturn [{ json: { prompt, startDate, endDate } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "id": "generate-prompt-bulk",
+      "name": "GeneratePromptBulk"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.x.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xAiApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "grok-2-latest"
+            },
+            {
+              "name": "search_parameters",
+              "value": "={{ {   \"mode\": \"auto\",   \"from_date\": $json.startDate,   \"to_date\": $json.endDate,   \"max_search_results\": 100,   \"sources\": [{ \"type\": \"x\", \"post_favorite_count\": 5 }] } }}"
+            },
+            {
+              "name": "messages",
+              "value": "={{ [{ \"role\": \"user\", \"content\": $json.prompt }] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ],
+      "id": "call-grok-bulk",
+      "name": "CallGrokBulk",
+      "credentials": {
+        "xAiApi": {
+          "id": "m3OLs9FipQlOJmOA",
+          "name": "xAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Grokから返ってきたJSON文字列をパース\ntry {\n  const response = $json.choices[0].message.content;\n  console.log(`📦 Grok応答サイズ: ${response.length}文字`);\n  \n  const items = JSON.parse(response);\n  console.log(`📊 パース成功: ${items.length}件`);\n  \n  return items.map(item => ({ json: item }));\n} catch (err) {\n  console.error(`❌ パースエラー: ${err.message}`);\n  return [{ json: { error: true, message: err.message } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "id": "parse-grok-bulk",
+      "name": "ParseGrokBulk"
+    },
+    {
+      "parameters": {
+        "jsCode": "// TransformForTokuSearch - 大量データ版（created_at = tweet_created_at対応）\n\n// テキスト正規化関数\nfunction normalizeText(text) {\n  if (!text) return '';\n  return text\n    .toLowerCase()\n    .replace(/[！!？?　\\s\\n]/g, '')\n    .replace(/【.*?】/g, '')\n    .replace(/\\(.*?\\)/g, '')\n    .replace(/（.*?）/g, '')\n    .trim();\n}\n\n// シンプルなハッシュ関数\nfunction simpleHash(str) {\n  let hash = 0;\n  for (let i = 0; i < str.length; i++) {\n    const char = str.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash;\n  }\n  return Math.abs(hash).toString(36);\n}\n\n// URLベースID生成\nfunction generateURLBasedID(url) {\n  if (!url) return null;\n  const match = url.match(/status\\/(\\d+)/);\n  return match ? `x-${match[1]}` : null;\n}\n\n// 内容ベースID生成\nfunction generateContentBasedID(data) {\n  const service = (data.service || '').toLowerCase().replace(/[^a-z0-9]/g, '');\n  const normalizedTitle = normalizeText(data.title || '');\n  const expiration = data.expiration || 'none';\n  \n  const serviceKey = service\n    .replace(/yahoo!?ショッピング/g, 'yahoo')\n    .replace(/yahoo!?しょっぴんぐ/g, 'yahoo')\n    .replace(/paypay/g, 'paypay')\n    .replace(/aupay/g, 'aupay')\n    .replace(/aupa-i/g, 'aupay');\n  \n  const compositeKey = `${serviceKey}|${normalizedTitle.substring(0, 50)}|${expiration}`;\n  return `deal-${simpleHash(compositeKey)}`;\n}\n\n// 決定的ID生成\nfunction generateDeterministicID(data) {\n  const urlID = generateURLBasedID(data.url);\n  const contentID = generateContentBasedID(data);\n  return urlID || contentID;\n}\n\n// カテゴリ判定関数\nfunction determineCategory(service, title, detail) {\n  const text = `${service} ${title} ${detail}`.toLowerCase();\n  \n  if (/マツキヨ|サンドラッグ|ツルハ|ウエルシア|ココカラ|ドラッグ|日用品|化粧品|医薬品|薬|脱毛/.test(text)) {\n    return 'ドラッグストア・日用品';\n  }\n  \n  if (/イオン|イトーヨーカドー|西友|ライフ|amazon|楽天|yahoo|ヤフー|ec|通販|セブン|ファミマ|ファミリーマート|ローソン|コンビニ/.test(text)) {\n    return 'スーパー・量販店・EC';\n  }\n  \n  if (/スタバ|スターバックス|マック|マクドナルド|すき家|松屋|吉野家|外食|レストラン|飲食|グルメ|食事|ランチ|ディナー/.test(text)) {\n    return 'グルメ・外食';\n  }\n  \n  if (/jr|jal|ana|ソラシド|ジェット|スター|traicy|旅行|ホテル|宿泊|航空|新幹線|電車|交通|トラベル|飛行機|his/.test(text)) {\n    return '旅行・交通';\n  }\n  \n  if (/paypay|line pay|d払い|楽天pay|au pay|メルペイ|ポイント|キャッシュバック|還元|クーポン|決済|pay|ペイ|ウエル活|ポン活|ドリチケ|vポイント|mnp|povo|uq/.test(text)) {\n    return '決済・ポイント';\n  }\n  \n  if (/タバコ|たばこ|煙草|電子タバコ|加熱式|vape|アイコス|プルーム|グロー/.test(text)) {\n    return 'タバコ・嗜好品';\n  }\n  \n  return 'その他';\n}\n\n// 割引率・金額を抽出する関数\nfunction extractDiscountInfo(detail, summary) {\n  const text = `${detail} ${summary}`;\n  let rate = null;\n  let amount = null;\n  \n  const rateMatch = text.match(/(\\d+)%|還元率[:：]?\\s*(\\d+)/);\n  if (rateMatch) {\n    rate = parseInt(rateMatch[1] || rateMatch[2]);\n  }\n  \n  const amountMatch = text.match(/(\\d{1,3}(?:,\\d{3})*)円|還元額[:：]?\\s*(\\d{1,3}(?:,\\d{3})*)/);\n  if (amountMatch) {\n    const amountStr = (amountMatch[1] || amountMatch[2]).replace(/,/g, '');\n    amount = parseInt(amountStr);\n  }\n  \n  return { rate, amount };\n}\n\n// 優先度判定関数\nfunction determinePriority(discountRate, discountAmount) {\n  if ((discountRate && discountRate >= 20) || (discountAmount && discountAmount >= 3000)) {\n    return 'A';\n  }\n  \n  if ((discountRate && discountRate >= 10) || (discountAmount && discountAmount >= 1000)) {\n    return 'B';\n  }\n  \n  return 'C';\n}\n\n// スコアリング関数（0-100）\nfunction calculateScore(discountRate, discountAmount, priority, hasExpiration) {\n  let score = 50;\n  \n  if (priority === 'A') score += 30;\n  else if (priority === 'B') score += 20;\n  else score += 10;\n  \n  if (discountRate) {\n    score += Math.min(discountRate / 2, 10);\n  }\n  \n  if (discountAmount) {\n    score += Math.min(discountAmount / 500, 10);\n  }\n  \n  if (hasExpiration) {\n    score += 5;\n  }\n  \n  return Math.min(Math.round(score), 100);\n}\n\n// ツイート日時をISO形式に変換\nfunction formatTweetCreatedAt(tweetCreatedAt, fallbackDate) {\n  // tweet_created_atが既にISO形式の場合はそのまま使用\n  if (tweetCreatedAt && /\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/.test(tweetCreatedAt)) {\n    return tweetCreatedAt;\n  }\n  \n  // fallbackDateがある場合、それを使って00:00:00のISO形式を作成\n  if (fallbackDate && /\\d{4}-\\d{2}-\\d{2}/.test(fallbackDate)) {\n    return `${fallbackDate}T00:00:00.000Z`;\n  }\n  \n  // どちらもない場合は現在時刻\n  return new Date().toISOString();\n}\n\n// メイン処理\nconst items = $input.all();\nconst transformedItems = [];\n\nconsole.log(`🔄 TransformForTokuSearch（大量版）: ${items.length}件を処理開始`);\n\n// 300件に制限\nconst limitedItems = items.slice(0, 300);\nconsole.log(`📊 上限300件に制限: ${limitedItems.length}件を処理`);\n\nfor (const item of limitedItems) {\n  const data = item.json;\n  \n  // エラーアイテムはスキップ\n  if (data.error) {\n    console.log(`⚠️ エラーアイテムをスキップ: ${data.message}`);\n    continue;\n  }\n  \n  // 決定的ID生成\n  const id = generateDeterministicID(data);\n  \n  // カテゴリ判定\n  const category_main = determineCategory(data.service || '', data.title || '', data.detail || '');\n  \n  // 割引情報抽出\n  const { rate, amount } = extractDiscountInfo(data.detail || '', data.summary || '');\n  \n  // 優先度判定\n  const priority = determinePriority(rate, amount);\n  \n  // スコア計算\n  const score = calculateScore(rate, amount, priority, !!data.expiration);\n  \n  // notesに追記（URL、出典情報）\n  let notes = data.notes || '';\n  if (data.url) {\n    notes += notes ? '\\n' : '';\n    notes += `【出典】${data.source_name || ''} (${data.source_id || ''})\\n${data.url}`;\n  }\n  \n  // created_atをツイート日時から生成\n  const created_at = formatTweetCreatedAt(data.tweet_created_at, data.date);\n  const updated_at = new Date().toISOString();\n  \n  // TokuSearch形式のオブジェクトを作成\n  const transformed = {\n    id: id,\n    date: data.date || new Date().toISOString().slice(0, 10),\n    title: data.title || '',\n    summary: data.summary || '',\n    detail: data.detail || '',\n    steps: data.steps || '',\n    service: data.service || '',\n    expiration: data.expiration || '',\n    conditions: data.conditions || '',\n    notes: notes,\n    category_main: category_main,\n    category_sub: '',\n    is_public: 'TRUE',\n    priority: priority,\n    discount_rate: rate || '',\n    discount_amount: amount || '',\n    score: score,\n    created_at: created_at,\n    updated_at: updated_at\n  };\n  \n  transformedItems.push({ json: transformed });\n}\n\nconsole.log(`✅ TransformForTokuSearch（大量版）: ${transformedItems.length}件の変換完了`);\n\nreturn transformedItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ],
+      "id": "transform-bulk",
+      "name": "TransformForTokuSearchBulk"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1200,
+        300
+      ],
+      "id": "save-to-sheets-bulk",
+      "name": "SaveToSheetsBulk",
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        0,
+        300
+      ],
+      "id": "manual-trigger-bulk",
+      "name": "ManualTrigger",
+      "typeVersion": 1.2
+    }
+  ],
+  "connections": {
+    "GeneratePromptBulk": {
+      "main": [
+        [
+          {
+            "node": "CallGrokBulk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CallGrokBulk": {
+      "main": [
+        [
+          {
+            "node": "ParseGrokBulk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseGrokBulk": {
+      "main": [
+        [
+          {
+            "node": "TransformForTokuSearchBulk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TransformForTokuSearchBulk": {
+      "main": [
+        [
+          {
+            "node": "SaveToSheetsBulk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ManualTrigger": {
+      "main": [
+        [
+          {
+            "node": "GeneratePromptBulk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "temp-bulk-collection-workflow"
+  },
+  "tags": []
+}
+
+
+
+

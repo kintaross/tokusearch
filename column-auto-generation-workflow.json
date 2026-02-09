@@ -1,0 +1,501 @@
+{
+  "name": "コラム自動生成＆TokuSearch投稿",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1200,
+        240
+      ],
+      "id": "schedule-trigger-001",
+      "name": "毎日9時トリガー"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$env.GOOGLE_SHEETS_SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "column_themes",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "used",
+              "lookupValue": "FALSE"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1000,
+        240
+      ],
+      "id": "google-sheets-read-001",
+      "name": "未使用テーマ取得",
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 前のノードでGoogle Sheetsから取得した未使用テーマ\nconst unusedThemes = $input.all().map(item => item.json);\n\nif (unusedThemes.length === 0) {\n  throw new Error('全てのテーマを使用済みです。リセットしてください。');\n}\n\n// ランダムに1件選択\nconst randomIndex = Math.floor(Math.random() * unusedThemes.length);\nconst selectedTheme = unusedThemes[randomIndex];\n\nreturn [{ json: selectedTheme }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        240
+      ],
+      "id": "code-random-select-001",
+      "name": "ランダムテーマ選択"
+    },
+    {
+      "parameters": {
+        "jsCode": "const theme = $json.theme;\nconst level = $json.level;\n\nconst prompt = `\n【システム指示】\nあなたはポイ活・節約メディア「TokuSearch」の記事ライターです。\n以下の情報から記事を生成し、JSON形式で出力してください。\n\n【入力情報】\n- レベル: ${level}\n- テーマ: ${theme}\n\n【出力形式（必ずこのJSON形式で）】\n{\n  \"title\": \"記事タイトル（魅力的で具体的に）\",\n  \"content_markdown\": \"## 導入\\\\n\\\\n本文...\\\\n\\\\n## 基本の考え方\\\\n\\\\n...\",\n  \"description\": \"SEO用概要（50-160文字）\",\n  \"category\": \"ポイント活用術\",\n  \"tags\": \"楽天ポイント, 貯め方, ポイ活\"\n}\n\n【記事構成】\n1. ## 導入（読者の悩み、この記事で分かること）\n2. ## 基本の考え方（前提知識）\n3. ## 具体的なステップ（手順を明確に）\n4. ## 注意点・よくある失敗\n5. ## まとめ（要点と最初の一歩）\n\n【文字数】: 2000-3000文字\n\n【レベル別の書き分け】\n- 初心者向け: 用語を丁寧に説明、小さいステップ\n- 中級者以上/上級者/超ポイ活特化: 比較・戦略・効率化重視\n\n【重要】\n- JSON形式のみ出力（説明文不要）\n- 日本語のみ\n- 違法行為・規約違反の内容は含めない\n`.trim();\n\nreturn [{ json: { prompt, theme, level, themeNo: $json.no, rowIndex: $json.rowIndex } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -600,
+        240
+      ],
+      "id": "code-article-prompt-001",
+      "name": "記事生成プロンプト作成"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": $json.prompt\n    }]\n  }]\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        240
+      ],
+      "id": "http-gemini-article-001",
+      "name": "Gemini記事生成",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gojn353h4HLDUzF2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gemini APIのレスポンスからJSON抽出\ntry {\n  const responseText = $json.candidates[0].content.parts[0].text;\n  \n  // JSONブロックを抽出（```json```で囲まれている場合）\n  let jsonText = responseText;\n  const jsonMatch = responseText.match(/```json\\s*([\\s\\S]*?)```/);\n  if (jsonMatch) {\n    jsonText = jsonMatch[1];\n  }\n  \n  const articleData = JSON.parse(jsonText.trim());\n  \n  // 前のノードのデータを保持\n  return [{ \n    json: { \n      ...articleData,\n      theme: $('記事生成プロンプト作成').item.json.theme,\n      level: $('記事生成プロンプト作成').item.json.level,\n      themeNo: $('記事生成プロンプト作成').item.json.themeNo,\n      rowIndex: $('記事生成プロンプト作成').item.json.rowIndex\n    } \n  }];\n} catch (err) {\n  throw new Error('記事JSONの解析に失敗しました: ' + err.message);\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        240
+      ],
+      "id": "code-parse-article-001",
+      "name": "記事JSON解析"
+    },
+    {
+      "parameters": {
+        "jsCode": "const theme = $json.theme;\nconst level = $json.level;\nconst title = $json.title;\n\n// 日本語プロンプトで画像生成\nconst imagePrompt = `\n${theme}に関する、日本のポイ活・節約記事のサムネイル画像を作成してください。\n\n【スタイル】\n- モダンでフラットなイラストスタイル\n- 親しみやすく、明るい雰囲気\n- カラーパレット: オレンジ（#f97316）、ベージュ（#fef3e2）、ブルー、グリーンを基調\n- 横長（16:9）、背景はシンプルなグラデーション\n\n【含める要素】\n- ポイントカード、スマートフォン、コイン、矢印、アイコン\n- 日本らしいデザイン要素\n- ${level === '初心者向け' ? '初心者にも分かりやすいシンプルな構成' : 'やや詳細で洗練された構成'}\n\n【重要】\n- 画像内にテキストは不要\n- クリーンで見やすいデザイン\n- Webサムネイルとして最適化\n`.trim();\n\nreturn [{ json: { ...$json, imagePrompt } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        240
+      ],
+      "id": "code-image-prompt-001",
+      "name": "画像生成プロンプト作成"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"instances\": [{\n    \"prompt\": $json.imagePrompt\n  }],\n  \"parameters\": {\n    \"sampleCount\": 1,\n    \"aspectRatio\": \"16:9\",\n    \"safetySetting\": \"block_some\",\n    \"personGeneration\": \"allow_adult\"\n  }\n} }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        200,
+        240
+      ],
+      "id": "http-gemini-image-001",
+      "name": "Gemini画像生成",
+      "notes": "※ エンドポイントURLは実際のGemini Imagen APIドキュメントで確認してください。2025年11月時点の情報です。",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "gemini-header-auth",
+          "name": "Gemini Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "jsonToBinary",
+        "convertAllData": false,
+        "sourceProperty": "predictions[0].bytesBase64Encoded",
+        "options": {
+          "fileName": "=col-{{$json.themeNo}}-{{Date.now()}}.png",
+          "mimeType": "image/png"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        240
+      ],
+      "id": "convert-to-file-001",
+      "name": "Base64→ファイル変換",
+      "notes": "※ Gemini Imagen APIのレスポンス構造に応じて、sourcePropertyを調整してください。"
+    },
+    {
+      "parameters": {
+        "mode": "binaryToJson",
+        "binaryPropertyName": "data",
+        "jsonPropertyName": "data",
+        "options": {
+          "encoding": "base64",
+          "keepSource": true
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        600,
+        240
+      ],
+      "id": "extract-from-file-001",
+      "name": "ファイル→Base64変換",
+      "notes": "TokuSearch Upload APIにBase64形式で送信するため、ファイルをBase64文字列に変換します。"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tokusearch.vercel.app/api/admin/columns/upload-image",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"image\": $json.data,\n  \"filename\": $binary.data.fileName\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        240
+      ],
+      "id": "http-upload-image-001",
+      "name": "画像アップロード",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "n8n-api-key-auth",
+          "name": "N8N API Key Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Markdownの内容はそのまま保持（API側でHTML変換を行う）\nconst articleData = $('記事JSON解析').item.json;\nconst thumbnailUrl = $json.url;\n\nreturn [{ \n  json: {\n    title: articleData.title,\n    slug: '',\n    description: articleData.description,\n    content_markdown: articleData.content_markdown,\n    category: articleData.category,\n    tags: articleData.tags,\n    thumbnail_url: thumbnailUrl,\n    author: 'TokuSearch編集部',\n    status: 'published',\n    // Google Sheets更新用\n    themeNo: articleData.themeNo,\n    rowIndex: articleData.rowIndex,\n    theme: articleData.theme\n  } \n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        240
+      ],
+      "id": "code-prepare-post-001",
+      "name": "投稿データ準備"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tokusearch.vercel.app/api/admin/columns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"title\": $json.title,\n  \"slug\": $json.slug,\n  \"description\": $json.description,\n  \"content_markdown\": $json.content_markdown,\n  \"category\": $json.category,\n  \"tags\": $json.tags,\n  \"thumbnail_url\": $json.thumbnail_url,\n  \"author\": $json.author,\n  \"status\": $json.status\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        240
+      ],
+      "id": "http-post-column-001",
+      "name": "コラム投稿",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "n8n-api-key-auth",
+          "name": "N8N API Key Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$env.GOOGLE_SHEETS_SPREADSHEET_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "column_themes",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "used": "=TRUE",
+            "used_at": "={{new Date().toISOString()}}"
+          }
+        },
+        "options": {
+          "lookupColumn": "no",
+          "lookupValue": "={{$('投稿データ準備').item.json.themeNo}}"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1400,
+        240
+      ],
+      "id": "google-sheets-update-001",
+      "name": "テーマ使用済み更新",
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const article = $('投稿データ準備').item.json;\nconst columnResponse = $('コラム投稿').item.json;\n\nconst message = `✅ コラム自動投稿完了！\n\n📝 タイトル: ${article.title}\n🏷️ カテゴリ: ${article.category}\n🔖 タグ: ${article.tags}\n📊 テーマNo: ${article.themeNo}\n🌐 テーマ: ${article.theme}\n\n${columnResponse.slug ? '🔗 URL: https://tokusearch.vercel.app/columns/' + columnResponse.slug : ''}`;\n\nreturn [{ json: { message } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        240
+      ],
+      "id": "code-notification-001",
+      "name": "完了通知メッセージ作成"
+    }
+  ],
+  "connections": {
+    "毎日9時トリガー": {
+      "main": [
+        [
+          {
+            "node": "未使用テーマ取得",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "未使用テーマ取得": {
+      "main": [
+        [
+          {
+            "node": "ランダムテーマ選択",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ランダムテーマ選択": {
+      "main": [
+        [
+          {
+            "node": "記事生成プロンプト作成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "記事生成プロンプト作成": {
+      "main": [
+        [
+          {
+            "node": "Gemini記事生成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini記事生成": {
+      "main": [
+        [
+          {
+            "node": "記事JSON解析",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "記事JSON解析": {
+      "main": [
+        [
+          {
+            "node": "画像生成プロンプト作成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "画像生成プロンプト作成": {
+      "main": [
+        [
+          {
+            "node": "Gemini画像生成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini画像生成": {
+      "main": [
+        [
+          {
+            "node": "Base64→ファイル変換",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Base64→ファイル変換": {
+      "main": [
+        [
+          {
+            "node": "ファイル→Base64変換",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ファイル→Base64変換": {
+      "main": [
+        [
+          {
+            "node": "画像アップロード",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "画像アップロード": {
+      "main": [
+        [
+          {
+            "node": "投稿データ準備",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "投稿データ準備": {
+      "main": [
+        [
+          {
+            "node": "コラム投稿",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "コラム投稿": {
+      "main": [
+        [
+          {
+            "node": "テーマ使用済み更新",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "テーマ使用済み更新": {
+      "main": [
+        [
+          {
+            "node": "完了通知メッセージ作成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-11-27T00:00:00.000Z",
+  "versionId": "1.0.0"
+}
+

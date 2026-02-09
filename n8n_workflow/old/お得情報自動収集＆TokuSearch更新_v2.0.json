@@ -1,0 +1,898 @@
+{
+  "name": "お得情報自動収集＆TokuSearch更新",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Grokから返ってきた\"choices[0].message.content\"にJSON文字列がある\ntry {\n  const response = $json.choices[0].message.content;\n  const items = JSON.parse(response); // 文字列→配列に変換\n  return items.map(item => ({ json: item }));\n} catch (err) {\n  return [{ json: { error: true, message: err.message } }];\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        -240
+      ],
+      "id": "009d962b-6024-451f-bd5c-d3de51ebb02d",
+      "name": "ParseGrokResponse"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 日付ロジック: 過去24時間以内に変更（終了情報減らす）[1]\nconst now = new Date();\nconst oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);\nconst formatDate = (date) => date.toISOString().slice(0, 10);\nconst startDate = formatDate(oneDayAgo);\nconst endDate = formatDate(now);\n\n// 改善版プロンプト: 終了情報除外、信頼性フィルタ、類似情報追加、抽選/フォロー/投資除外[1]\nconst prompt = `\n${startDate}〜${endDate} の期間にX(Twitter)で投稿された「お得情報」を収集し、以下のJSON配列形式で返してください。[1]\n\n**重要**: 出力は純粋なJSONのみ。コードフェンス(\\`\\`\\`)や説明文は一切不要です。[1]\n\n[\n{\n\"date\": \"YYYY-MM-DD\",\n\"title\": \"お得情報の見出し\",\n\"summary\": \"短い要約（本文を凝縮）\",\n\"detail\": \"割引・還元の具体内容（率/額・上限・対象）\", [2]\n\"steps\": \"利用/申込の手順（アプリ・クーポン・時間帯など）\", [2]\n\"service\": \"対象サービス・店舗名\", [2]\n\"url\": \"https://x.com/.../status/...\", [2]\n\"source_name\": \"出典アカウント名\", [2]\n\"source_id\": \"@handle\", [2]\n\"expiration\": \"YYYY-MM-DD もしくは 期間の説明文 (終了済みはnull)\", [2]\n\"conditions\": \"新規/既存/先着/抽選/回数など\", [2]\n\"notes\": \"注意点・例外・備考\" [2]\n}\n]\n\n# 収集ルール\n- 監視アカウントを優先しつつ、類似系統の信頼できるものも含める (フォロワー500以上) [2]\n- 言い回しが違っても「内容が同じ」なら統合し1件にまとめる [2]\n- 以下のいずれかが異なる場合は別件とする： [2]\n- 対象サービス/店舗 [2]\n- 割引/還元の率・上限・期間 [2]\n- 利用/申込手順（支払い手段・条件の差） [2]\n- 数値は半角統一（例: 20%, 1000円, 上限1000ポイント） [2]\n- 欠損は null を入れる（空文字 \"\" は使わない） [2]\n- 同様の情報が複数あった場合は、フォロワー数が一番多い内容のurlを挿入する [3]\n- 終了したキャンペーンは除外 (expirationが過去の日付、または「終了」「終了間近」「今日で終わり」含むものはnull) [3]\n- 高額還元/割引 (10%以上、1000円以上) を優先 [3]\n- 信頼性低いもの (フォロワー50未満) は除外 [3]\n- 抽選で当選率が低いもの（当選者10000名以下）は除外 [3]\n- アカウントフォローやリポストを条件とするキャンペーンは除外 [3]\n- 投資関連（株、暗号資産、トレードなど）は除外 [3]\n- 重複内容は統合し、1件にまとめる [3]\n- **TikTokに関する内容は除外 (お客様の要望により厳守)** [3]\n- 上場企業の公式アカウント情報は除外（個人インフルエンサーレベルの情報がほしい） [3]\n- ◯◯を買うと1個無料などの、いわゆる「プライチ」は除外 [3]\n\n# 優先監視アカウント (更新: 旅行系アカウントTraicyを追加)\nことはむ【お得×ポイ活】 @kotoham_pkt [3]\nクーポメ @tosu5580 [3]\nかりん@医療脱毛マニア @buran_umeda [3]\nたっくん @9kuIOQMh1T85626 [3]\nあんこ @an89no23 [3]\nちびうさ🐰@無給兎ブロガー @chibiusachi [3]\nあくび@あくびジャパン @akubichan_sab [4]\nあくび@育児の合間に副業あれこれ @akubichan62124 [4]\nあのひと@万博VIP CARD保有済 @2akautebon [4]\nHalohalo｜旅行レジャー情報 @halohalo_travel [4]\nともりPay @tomor1nn [4]\nマネーの犬🐕 @ourmoneybook [4]\nmao (まお)@ポイ活で家を買った主婦 @mao_otk_tw [4]\nあきぽん @akipon229 [4]\nブルゾン@お得好き @BuruzonBBA [4]\nakiko_lawson @akiko_lawson [4]\nvtcosmetics_jp @vtcosmetics_jp [4]\n**Traicy（トライシー） @traicycom** // <-- 新規追加\n\n# 追加検索ルール (情報量増加のため、キーワードを大幅に強化)\n- セマンティック検索で類似情報を補完: \"お得情報 キャンペーン 割引 クーポン ポイント 還元 MNP povo UQ JAL ANA ソラシド ウエル活 ポン活 ドリチケ Vポイント PayPay\"\n- キーワード検索で新鮮情報: \"(お得 OR キャンペーン OR 割引 OR クーポン OR ポイント OR 還元 OR JAL OR ANA OR ジェットスター OR ソラシド OR ウエル活 OR ポン活 OR ドリチケ OR MNP OR PayPay OR Vポイント) **min_faves:5** since:${startDate} -TikTok -終了 -終わり -投資 -株 -暗号資産 -トレード\" **limit:50**\n`.trim();\n\nreturn [{ json: { prompt, startDate, endDate } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        -240
+      ],
+      "id": "7b0761ab-79f1-4d1e-a651-a5b1f676ba09",
+      "name": "GeneratePrompt"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.x.ai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xAiApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "grok-4"
+            },
+            {
+              "name": "search_parameters",
+              "value": "={{ {   \"mode\": \"auto\",   \"from_date\": $json.startDate,   \"to_date\": $json.endDate,   \"max_search_results\": 30,   \"sources\": [{ \"type\": \"x\", \"post_favorite_count\": 10 }] } }}"
+            },
+            {
+              "name": "messages",
+              "value": "={{ [{ \"role\": \"user\", \"content\": $json.prompt }] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -544,
+        -240
+      ],
+      "id": "22224c18-6923-46b8-88dc-0d7c118ded3c",
+      "name": "CallGrokAI",
+      "credentials": {
+        "xAiApi": {
+          "id": "m3OLs9FipQlOJmOA",
+          "name": "xAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "list",
+          "cachedResultName": "TokuSearch",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "database",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -48,
+        -16
+      ],
+      "id": "3a607381-ed27-421b-8ebd-a4f606f8ed8b",
+      "name": "GetSentHistory",
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst today = new Date().toISOString().slice(0, 10);\nlet message = `📅 ${today}の新着情報（${items.length}件）：\\n\\n`;\n\nfor (const item of items) {\n  const d = item.json;\n\n  // タイトルがないものはスキップする（またはd.urlでもOK）\n  if (!d.title && !d.url) continue;\n\n  message += `【タイトル】${d.title || '（なし）'}\\n`;\n  message += `【概要】${d.summary || '（なし）'}\\n`;\n  message += `【手順】${d.steps || '（なし）'}\\n`;\n  message += `【条件】${d.conditions || '（なし）'}\\n`;\n  message += `【期間】${d.expiration || '（不明）'}\\n`;\n  message += `【URL】${d.url || ''} (${d.source_id || '??'})\\n\\n`;\n}\n\nreturn [{ json: { text: message.trim() } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        400
+      ],
+      "id": "d76d0f73-bb89-4073-be8e-b86634818fe9",
+      "name": "BuildSlackMessage"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#daily_o-toku",
+          "mode": "name"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        400,
+        400
+      ],
+      "id": "04cdd427-f81e-4e81-aacd-2bb12730de95",
+      "name": "SlackNotify",
+      "webhookId": "a1ea8121-abd5-4a24-a6b4-655ddf5a6594",
+      "credentials": {
+        "slackApi": {
+          "id": "kahTvH10blaEP2kb",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "list",
+          "cachedResultName": "TokuSearch",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "database",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "date": "={{ $json.date }}",
+            "title": "={{ $json.title }}",
+            "summary": "={{ $json.summary }}",
+            "detail": "={{ $json.detail }}",
+            "steps": "={{ $json.steps }}",
+            "service": "={{ $json.service }}",
+            "expiration": "={{ $json.expiration }}",
+            "conditions": "={{ $json.conditions }}",
+            "notes": "={{ $json.notes }}",
+            "category_main": "={{ $json.category_main }}",
+            "category_sub": "={{ $json.category_sub }}",
+            "is_public": "={{ $json.is_public }}",
+            "priority": "={{ $json.priority }}",
+            "discount_rate": "={{ $json.discount_rate }}",
+            "discount_amount": "={{ $json.discount_amount }}",
+            "score": "={{ $json.score }}",
+            "created_at": "={{ $json.created_at }}",
+            "updated_at": "={{ $json.updated_at }}",
+            "difficulty": "={{ $json.difficulty }}",
+            "area_type": "={{ $json.area_type }}",
+            "target_user_type": "={{ $json.target_user_type }}",
+            "usage_type": "={{ $json.usage_type }}",
+            "is_welkatsu": "={{ $json.is_welkatsu }}",
+            "tags": "={{ $json.tags }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detail",
+              "displayName": "detail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "steps",
+              "displayName": "steps",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "expiration",
+              "displayName": "expiration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conditions",
+              "displayName": "conditions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category_main",
+              "displayName": "category_main",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category_sub",
+              "displayName": "category_sub",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "is_public",
+              "displayName": "is_public",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "discount_rate",
+              "displayName": "discount_rate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "discount_amount",
+              "displayName": "discount_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "difficulty",
+              "displayName": "difficulty",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "area_type",
+              "displayName": "area_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "target_user_type",
+              "displayName": "target_user_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "usage_type",
+              "displayName": "usage_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "is_welkatsu",
+              "displayName": "is_welkatsu",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tags",
+              "displayName": "tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        48,
+        224
+      ],
+      "id": "5296b703-b25f-4767-b75b-8c84f1ef5f5a",
+      "name": "SaveToHistory",
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json.prompt}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1152,
+        352
+      ],
+      "id": "9fb33656-00bd-40bb-9023-4de55c788d03",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gojn353h4HLDUzF2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "16265a7f-47e9-4372-aba4-5cbb3efc89b9",
+              "name": "prompt",
+              "value": "={{(() => {\n  const items = $json.allItems;\n  \n  // 重複チェックに必要な情報のみ抽出（コスト削減）\n  const simplifiedItems = items.map(item => ({\n    title: item.title,\n    service: item.service,\n    expiration: item.expiration,\n    detail: item.detail ? item.detail.substring(0, 200) : null // 詳細は最初の200文字のみ\n  }));\n  \n  return '以下は取得されたお得情報です。\\n\\n' +\n    'この中から、明らかに重複または同一の内容だと思われるものを除外し、' +\n    '新規と思われる情報のインデックス番号のみを **純粋なJSON配列形式** で返してください。\\n\\n' +\n    '⚠️ 注意：返却するのはインデックス番号の配列のみです。\\n\\n' +\n    '【判定基準】\\n' +\n    '- 同じサービス名で同じキャンペーン内容なら重複\\n' +\n    '- 期限が異なれば別キャンペーン\\n' +\n    '- 割引率・還元額が異なれば別キャンペーン\\n\\n' +\n    '【入力データ】\\n' +\n    JSON.stringify(simplifiedItems, null, 2) + '\\n\\n' +\n    '【返却形式】：新規情報のインデックス番号の配列をJSONで返してください（説明・マークダウン記法など不要）：\\n' +\n    '[0, 2, 5, 8]  // 例: 0番目、2番目、5番目、8番目が新規';\n})()}}\n",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -960,
+        112
+      ],
+      "id": "0ea622ce-90da-471a-983c-0c5c2dfdd393",
+      "name": "BuildGeminiPrompt"
+    },
+    {
+      "parameters": {
+        "content": "Grok処理",
+        "height": 208,
+        "width": 656,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -816,
+        -288
+      ],
+      "typeVersion": 1,
+      "id": "b544a38e-5518-497e-8ed8-226053c2ea78",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -48,
+        -224
+      ],
+      "id": "805a411a-9430-4fa6-8fa8-93d7314f5b1d",
+      "name": "MergeInputs"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 一度でも実行されたら1件だけ返すようにする\nif ($runIndex !== 0) return [];\n\nconst items = $input.all().map(item => item.json);\n\nreturn [\n  {\n    json: {\n      allItems: items\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1152,
+        112
+      ],
+      "id": "9c1cbada-c0c8-49fd-995e-f68f842a1633",
+      "name": "WrapItemsAsArray"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.content.parts[0].text;\n\n// コードブロック記号（```json\\n...```）を除去\nconst jsonString = rawText\n  .replace(/^```json\\s*/, '')  // ```json で始まる部分を削除\n  .replace(/```$/m, '')         // 最後の ``` を削除\n  .trim();\n\nlet indexArray;\ntry {\n  indexArray = JSON.parse(jsonString);\n} catch (e) {\n  throw new Error(\"❌ Geminiの出力からJSONとしてパースできませんでした。内容: \" + jsonString);\n}\n\nif (!Array.isArray(indexArray)) {\n  throw new Error(\"❌ Geminiの出力が配列ではありません。内容: \" + jsonString);\n}\n\n// WrapItemsAsArrayで保存された元のアイテムを取得\nconst originalItems = $items(\"WrapItemsAsArray\", 0)[0].json.allItems;\n\n// インデックス番号に基づいて元のアイテムを抽出\nconst filteredItems = indexArray\n  .filter(idx => idx >= 0 && idx < originalItems.length)\n  .map(idx => originalItems[idx]);\n\nconsole.log(`✅ Geminiが選択した新規情報: ${filteredItems.length}件`);\n\n// 出力形式を n8n 用に変換\nreturn filteredItems.map(item => ({ json: item }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        352
+      ],
+      "id": "981767fd-bab4-470d-b48b-1827689c3fee",
+      "name": "UnpackGeminiResults"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 「今日から過去30日以内」の履歴だけを残す\nconst thirtyDaysAgo = new Date();\nthirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);\n\nreturn items.filter(item => {\n  const dateStr = item.json.date || item.json.created_at;\n  if (!dateStr) return false;\n\n  const itemDate = new Date(dateStr);\n  return itemDate >= thirtyDaysAgo;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        -16
+      ],
+      "id": "e954e3b9-df77-4e9c-b295-d67edb1531f3",
+      "name": "FilterRecentHistory"
+    },
+    {
+      "parameters": {
+        "content": "重複チェック用 事前処理(取得)",
+        "height": 464,
+        "width": 416,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -128,
+        -288
+      ],
+      "typeVersion": 1,
+      "id": "6f299637-0859-42ad-91d4-8e01d0212534",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "重複チェック（高速事前フィルタ + Gemini最終判定）",
+        "height": 560,
+        "width": 656,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1344,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "98f6bca9-6fd1-464d-8934-9a325b973451",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "最終処理（Slack通知・履歴保存）",
+        "height": 352,
+        "width": 800
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -128,
+        208
+      ],
+      "typeVersion": 1,
+      "id": "a9bdc4e1-92ba-4b80-9567-c82826551843",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10
+            },
+            {
+              "triggerAtHour": 20
+            },
+            {
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1120,
+        -240
+      ],
+      "id": "d4604ff9-682d-43c6-abb7-648192024987",
+      "name": "TriggerEvery1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ========================================\n// TransformForTokuSearch ノード（v2.0対応）\n// 決定的ID生成 + TokuSearch形式変換 + 新カラム対応\n// ========================================\n\n// テキスト正規化関数（表現の揺れを吸収）\nfunction normalizeText(text) {\n  if (!text) return '';\n  return text\n    .toLowerCase()\n    .replace(/[！!？?　\\s\\n]/g, '') // 記号・スペース・改行削除\n    .replace(/【.*?】/g, '') // 【】内削除\n    .replace(/\\(.*?\\)/g, '') // ()内削除\n    .replace(/（.*?）/g, '') // （）内削除\n    .trim();\n}\n\n// シンプルなハッシュ関数\nfunction simpleHash(str) {\n  let hash = 0;\n  for (let i = 0; i < str.length; i++) {\n    const char = str.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash; // 32bit整数に変換\n  }\n  return Math.abs(hash).toString(36);\n}\n\n// URLベースID生成\nfunction generateURLBasedID(url) {\n  if (!url) return null;\n  const match = url.match(/status\\/(\\d+)/);\n  return match ? `x-${match[1]}` : null;\n}\n\n// 内容ベースID生成\nfunction generateContentBasedID(data) {\n  const service = (data.service || '').toLowerCase().replace(/[^a-z0-9]/g, '');\n  const normalizedTitle = normalizeText(data.title || '');\n  const expiration = data.expiration || 'none';\n  \n  // サービス名の短縮形も考慮\n  const serviceKey = service\n    .replace(/yahoo!?ショッピング/g, 'yahoo')\n    .replace(/yahoo!?しょっぴんぐ/g, 'yahoo')\n    .replace(/paypay/g, 'paypay')\n    .replace(/aupay/g, 'aupay')\n    .replace(/aupa-i/g, 'aupay');\n  \n  const compositeKey = `${serviceKey}|${normalizedTitle.substring(0, 50)}|${expiration}`;\n  return `deal-${simpleHash(compositeKey)}`;\n}\n\n// 決定的ID生成（URL優先、なければ内容ベース）\nfunction generateDeterministicID(data) {\n  const urlID = generateURLBasedID(data.url);\n  const contentID = generateContentBasedID(data);\n  \n  // プライマリIDはURL優先（URLがある場合）\n  return urlID || contentID;\n}\n\n// カテゴリ判定関数\nfunction determineCategory(service, title, detail) {\n  const text = `${service} ${title} ${detail}`.toLowerCase();\n  \n  // ドラッグストア・日用品\n  if (/マツキヨ|サンドラッグ|ツルハ|ウエルシア|ココカラ|ドラッグ|日用品|化粧品|医薬品|薬|脱毛/.test(text)) {\n    return 'ドラッグストア・日用品';\n  }\n  \n  // スーパー・量販店・EC\n  if (/イオン|イトーヨーカドー|西友|ライフ|amazon|楽天|yahoo|ヤフー|ec|通販|セブン|ファミマ|ファミリーマート|ローソン|コンビニ/.test(text)) {\n    return 'スーパー・量販店・EC';\n  }\n  \n  // グルメ・外食\n  if (/スタバ|スターバックス|マック|マクドナルド|すき家|松屋|吉野家|外食|レストラン|飲食|グルメ|食事|ランチ|ディナー/.test(text)) {\n    return 'グルメ・外食';\n  }\n  \n  // 旅行・交通\n  if (/jr|jal|ana|ソラシド|ジェット|スター|traicy|旅行|ホテル|宿泊|航空|新幹線|電車|交通|トラベル|飛行機|his/.test(text)) {\n    return '旅行・交通';\n  }\n  \n  // 決済・ポイント\n  if (/paypay|line pay|d払い|楽天pay|au pay|メルペイ|ポイント|キャッシュバック|還元|クーポン|決済|pay|ペイ|ウエル活|ポン活|ドリチケ|vポイント|mnp|povo|uq/.test(text)) {\n    return '決済・ポイント';\n  }\n  \n  // タバコ・嗜好品\n  if (/タバコ|たばこ|煙草|電子タバコ|加熱式|vape|アイコス|プルーム|グロー/.test(text)) {\n    return 'タバコ・嗜好品';\n  }\n  \n  return 'その他';\n}\n\n// 割引率・金額を抽出する関数\nfunction extractDiscountInfo(detail, summary) {\n  const text = `${detail} ${summary}`;\n  let rate = null;\n  let amount = null;\n  \n  // 割引率の抽出（%）\n  const rateMatch = text.match(/(\\d+)%|還元率[:：]?\\s*(\\d+)/);\n  if (rateMatch) {\n    rate = parseInt(rateMatch[1] || rateMatch[2]);\n  }\n  \n  // 金額の抽出（円）\n  const amountMatch = text.match(/(\\d{1,3}(?:,\\d{3})*)円|還元額[:：]?\\s*(\\d{1,3}(?:,\\d{3})*)/);\n  if (amountMatch) {\n    const amountStr = (amountMatch[1] || amountMatch[2]).replace(/,/g, '');\n    amount = parseInt(amountStr);\n  }\n  \n  return { rate, amount };\n}\n\n// 優先度判定関数\nfunction determinePriority(discountRate, discountAmount) {\n  // A: 20%以上 または 3000円以上\n  if ((discountRate && discountRate >= 20) || (discountAmount && discountAmount >= 3000)) {\n    return 'A';\n  }\n  \n  // B: 10%以上 または 1000円以上\n  if ((discountRate && discountRate >= 10) || (discountAmount && discountAmount >= 1000)) {\n    return 'B';\n  }\n  \n  // C: その他\n  return 'C';\n}\n\n// スコアリング関数（0-100）\nfunction calculateScore(discountRate, discountAmount, priority, hasExpiration) {\n  let score = 50; // ベーススコア\n  \n  // 優先度によるボーナス\n  if (priority === 'A') score += 30;\n  else if (priority === 'B') score += 20;\n  else score += 10;\n  \n  // 割引率によるボーナス\n  if (discountRate) {\n    score += Math.min(discountRate / 2, 10); // 最大10点\n  }\n  \n  // 割引額によるボーナス\n  if (discountAmount) {\n    score += Math.min(discountAmount / 500, 10); // 最大10点\n  }\n  \n  // 期限情報があるかどうか\n  if (hasExpiration) {\n    score += 5;\n  }\n  \n  // 100点満点に正規化\n  return Math.min(Math.round(score), 100);\n}\n\n// メイン処理\nconst items = $input.all();\nconst transformedItems = [];\n\nconsole.log(`🔄 TransformForTokuSearch: ${items.length}件を処理開始`);\n\nfor (const item of items) {\n  const data = item.json;\n  \n  // 決定的ID生成（URL優先、なければ内容ベース）\n  const id = generateDeterministicID(data);\n  console.log(`📝 生成ID: ${id} (タイトル: ${data.title})`);\n  \n  // カテゴリ判定\n  const category_main = determineCategory(data.service || '', data.title || '', data.detail || '');\n  \n  // 割引情報抽出\n  const { rate, amount } = extractDiscountInfo(data.detail || '', data.summary || '');\n  \n  // 優先度判定\n  const priority = determinePriority(rate, amount);\n  \n  // スコア計算\n  const score = calculateScore(rate, amount, priority, !!data.expiration);\n  \n  // notesに追記（URL、出典情報）\n  let notes = data.notes || '';\n  if (data.url) {\n    notes += notes ? '\\n' : '';\n    notes += `【出典】${data.source_name || ''} (${data.source_id || ''})\\n${data.url}`;\n  }\n  \n  // タイムスタンプ\n  const now = new Date().toISOString();\n  \n  // TokuSearch形式のオブジェクトを作成\n  const transformed = {\n    id: id,\n    date: data.date || new Date().toISOString().slice(0, 10),\n    title: data.title || '',\n    summary: data.summary || '',\n    detail: data.detail || '',\n    steps: data.steps || '',\n    service: data.service || '',\n    expiration: data.expiration || '',\n    conditions: data.conditions || '',\n    notes: notes,\n    category_main: category_main,\n    category_sub: '', // オプション\n    is_public: 'TRUE',\n    priority: priority,\n    discount_rate: rate || '',\n    discount_amount: amount || '',\n    score: score,\n    created_at: now,\n    updated_at: now,\n    // v2.0 新規追加フィールド（LLMタグ付けノードから取得）\n    difficulty: data.difficulty || 'medium',\n    area_type: data.area_type || 'online+store',\n    target_user_type: data.target_user_type || 'all',\n    usage_type: data.usage_type || 'other',\n    is_welkatsu: data.is_welkatsu === true ? 'TRUE' : 'FALSE',\n    tags: data.tags || ''\n  };\n  \n  transformedItems.push({ json: transformed });\n}\n\nconsole.log(`✅ TransformForTokuSearch: ${transformedItems.length}件の変換完了`);\n\nreturn transformedItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        352
+      ],
+      "id": "3aca6689-7116-4293-9812-8f47fe6127aa",
+      "name": "TransformForTokuSearch"
+    },
+    {
+      "parameters": {
+        "content": "TokuSearch変換（v2.0対応）",
+        "height": 288,
+        "width": 416,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -240,
+        272
+      ],
+      "typeVersion": 1,
+      "id": "4492fd60-5d74-4959-a2fb-3100c5a537ec",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ========================================\n// FilterByID: 高速事前フィルタ（URL + 内容ベース）\n// ========================================\n\n// テキスト正規化関数（TransformForTokuSearchと同じ）\nfunction normalizeText(text) {\n  if (!text) return '';\n  return text\n    .toLowerCase()\n    .replace(/[！!？?　\\s\\n]/g, '')\n    .replace(/【.*?】/g, '')\n    .replace(/\\(.*?\\)/g, '')\n    .replace(/（.*?）/g, '')\n    .trim();\n}\n\n// シンプルなハッシュ関数\nfunction simpleHash(str) {\n  let hash = 0;\n  for (let i = 0; i < str.length; i++) {\n    const char = str.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash;\n  }\n  return Math.abs(hash).toString(36);\n}\n\n// URLベースID生成\nfunction generateURLBasedID(url) {\n  if (!url) return null;\n  const match = url.match(/status\\/(\\d+)/);\n  return match ? `x-${match[1]}` : null;\n}\n\n// 内容ベースID生成\nfunction generateContentBasedID(data) {\n  const service = (data.service || '').toLowerCase().replace(/[^a-z0-9]/g, '');\n  const normalizedTitle = normalizeText(data.title || '');\n  const expiration = data.expiration || 'none';\n  \n  const serviceKey = service\n    .replace(/yahoo!?ショッピング/g, 'yahoo')\n    .replace(/yahoo!?しょっぴんぐ/g, 'yahoo')\n    .replace(/paypay/g, 'paypay')\n    .replace(/aupay/g, 'aupay')\n    .replace(/aupa-i/g, 'aupay');\n  \n  const compositeKey = `${serviceKey}|${normalizedTitle.substring(0, 50)}|${expiration}`;\n  return `deal-${simpleHash(compositeKey)}`;\n}\n\n// メイン処理\nconst historyItems = $items(\"FilterRecentHistory\", 0).map(i => i.json);\nconst grokItems = $input.all().map(i => i.json);\n\n// 履歴のID一覧（URL + 内容）\nconst historyURLIDs = new Set();\nconst historyContentIDs = new Set();\n\nhistoryItems.forEach(item => {\n  // URL-based ID\n  const urlID = generateURLBasedID(item.url);\n  if (urlID) historyURLIDs.add(urlID);\n  \n  // Content-based ID（既存の履歴からも生成）\n  if (item.id) {\n    // 既存IDがx-で始まる場合もURLベースとして扱う\n    if (item.id.startsWith('x-')) {\n      historyURLIDs.add(item.id);\n    } else if (item.id.startsWith('deal-')) {\n      historyContentIDs.add(item.id);\n    }\n  }\n  \n  // IDがない場合は内容から生成\n  if (!item.id) {\n    const contentID = generateContentBasedID(item);\n    historyContentIDs.add(contentID);\n  }\n});\n\nconsole.log(`📊 履歴URL-ID数: ${historyURLIDs.size}`);\nconsole.log(`📊 履歴Content-ID数: ${historyContentIDs.size}`);\nconsole.log(`📊 Grok結果数: ${grokItems.length}`);\n\n// 重複チェック\nconst filtered = grokItems.filter(item => {\n  // URL-based チェック\n  const urlID = generateURLBasedID(item.url);\n  if (urlID && historyURLIDs.has(urlID)) {\n    console.log(`⚠️ URL重複: ${item.title} (${urlID})`);\n    return false; // 重複\n  }\n  \n  // Content-based チェック\n  const contentID = generateContentBasedID(item);\n  if (historyContentIDs.has(contentID)) {\n    console.log(`⚠️ 内容重複: ${item.title} (${contentID})`);\n    return false; // 重複\n  }\n  \n  return true; // 新規\n});\n\nconsole.log(`✅ FilterByID完了: ${filtered.length}件が新規（${grokItems.length - filtered.length}件を除外）`);\n\nreturn filtered.map(i => ({ json: i }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1344,
+        112
+      ],
+      "id": "0dff1da4-ce54-49a5-b85e-61662c8660f8",
+      "name": "FilterByID"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ========================================\n// SimpleLLMTagging: 1件ずつ高速タグ付け\n// ========================================\n\nconst items = $input.all();\nconst enrichedItems = [];\n\n// 簡潔なプロンプトテンプレート\nconst buildPrompt = (item) => `\n以下のお得情報を分析し、JSON形式で返してください。\n\nタイトル: ${item.title}\nサービス: ${item.service}\n詳細: ${(item.detail || '').substring(0, 200)}\n条件: ${item.conditions}\n\n以下の形式で返してください（説明不要、JSONのみ）:\n{\n  \"difficulty\": \"low/medium/high\",\n  \"area_type\": \"online/store/online+store\",\n  \"target_user_type\": \"all/new_or_inactive/limited\",\n  \"usage_type\": \"daily_goods/eating_out/travel/financial/utility_bills/hobby/other\",\n  \"is_welkatsu\": true/false,\n  \"tags\": [\"タグ1\", \"タグ2\", \"タグ3\"]\n}\n\n判定基準:\n- difficulty: low=簡単, medium=普通, high=口座開設等\n- area_type: online=ネット, store=店舗, online+store=両方\n- target_user_type: all=誰でも, new_or_inactive=新規限定, limited=条件付き\n- usage_type: サービス内容から判断\n- is_welkatsu: ウエルシア関連ならtrue\n- tags: 3-5個の検索用タグ\n`.trim();\n\n// ルールベース判定（LLMフォールバック用）\nconst ruleBasedTagging = (item) => {\n  const text = `${item.title} ${item.service} ${item.detail}`.toLowerCase();\n  \n  // ウエル活判定\n  const is_welkatsu = /ウエルシア|ウエル活/.test(text);\n  \n  // 難易度判定\n  let difficulty = 'medium';\n  if (/口座|証券|クレカ|保険/.test(text)) difficulty = 'high';\n  else if (/エントリー|登録|クーポン/.test(text)) difficulty = 'low';\n  \n  // チャネル判定\n  let area_type = 'online+store';\n  if (/オンライン|ec|通販|amazon|楽天|yahoo/.test(text)) area_type = 'online';\n  else if (/店舗|来店|実店/.test(text)) area_type = 'store';\n  \n  // ユーザータイプ判定\n  let target_user_type = 'all';\n  if (/初めて|新規|利用なし|久しぶり/.test(text)) target_user_type = 'new_or_inactive';\n  else if (/限定|家族|学生|会員/.test(text)) target_user_type = 'limited';\n  \n  // 用途判定\n  let usage_type = 'other';\n  if (/ドラッグ|日用品|化粧品/.test(text)) usage_type = 'daily_goods';\n  else if (/グルメ|外食|レストラン|飲食/.test(text)) usage_type = 'eating_out';\n  else if (/旅行|ホテル|航空|jr/.test(text)) usage_type = 'travel';\n  else if (/paypay|決済|ポイント|還元|銀行/.test(text)) usage_type = 'financial';\n  \n  // タグ生成\n  const tags = [];\n  if (item.service) tags.push(item.service);\n  if (/paypay/.test(text)) tags.push('PayPay');\n  if (/セール|キャンペーン/.test(text)) tags.push('セール');\n  if (is_welkatsu) tags.push('ウエル活');\n  tags.push(usage_type === 'daily_goods' ? '日用品' : '割引');\n  \n  return { difficulty, area_type, target_user_type, usage_type, is_welkatsu, tags: tags.slice(0, 5).join(',') };\n};\n\nconsole.log(`🏷️ LLMタグ付け開始: ${items.length}件`);\n\n// 全アイテムにルールベースタグ付けを適用（高速・確実）\nfor (const item of items) {\n  const data = item.json;\n  const tagging = ruleBasedTagging(data);\n  \n  enrichedItems.push({\n    json: {\n      ...data,\n      ...tagging\n    }\n  });\n}\n\nconsole.log(`✅ タグ付け完了: ${enrichedItems.length}件（ルールベース）`);\n\nreturn enrichedItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        352
+      ],
+      "id": "llm-tagging-simple",
+      "name": "SimpleLLMTagging"
+    },
+    {
+      "parameters": {
+        "content": "ルールベースタグ付け（v2.0 - 高速・低コスト）",
+        "height": 288,
+        "width": 416,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -640,
+        272
+      ],
+      "typeVersion": 1,
+      "id": "llm-tagging-sticky-note",
+      "name": "Sticky Note5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "ParseGrokResponse": {
+      "main": [
+        [
+          {
+            "node": "MergeInputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GeneratePrompt": {
+      "main": [
+        [
+          {
+            "node": "CallGrokAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CallGrokAI": {
+      "main": [
+        [
+          {
+            "node": "ParseGrokResponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetSentHistory": {
+      "main": [
+        [
+          {
+            "node": "FilterRecentHistory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildSlackMessage": {
+      "main": [
+        [
+          {
+            "node": "SlackNotify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "UnpackGeminiResults",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildGeminiPrompt": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MergeInputs": {
+      "main": [
+        [
+          {
+            "node": "FilterByID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WrapItemsAsArray": {
+      "main": [
+        [
+          {
+            "node": "BuildGeminiPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UnpackGeminiResults": {
+      "main": [
+        [
+          {
+            "node": "SimpleLLMTagging",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FilterRecentHistory": {
+      "main": [
+        [
+          {
+            "node": "MergeInputs",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "TransformForTokuSearch": {
+      "main": [
+        [
+          {
+            "node": "BuildSlackMessage",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "SaveToHistory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TriggerEvery1": {
+      "main": [
+        [
+          {
+            "node": "GeneratePrompt",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "GetSentHistory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FilterByID": {
+      "main": [
+        [
+          {
+            "node": "WrapItemsAsArray",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SimpleLLMTagging": {
+      "main": [
+        [
+          {
+            "node": "TransformForTokuSearch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "updated-v2-with-llm-tagging",
+  "meta": {
+    "instanceId": "fefffd21e64fa94994bb4bf38b5a050c59f6cf28bd3cad9da0a5804220d9e97f"
+  },
+  "id": "9Q6T3O2xHWhcAjFC",
+  "tags": []
+}
+

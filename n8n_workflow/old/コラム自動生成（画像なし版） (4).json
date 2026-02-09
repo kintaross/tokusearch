@@ -1,0 +1,1081 @@
+{
+  "name": "コラム自動生成（画像なし版）",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📋 コラム自動生成ワークフロー\n\n**概要**: 毎日9時に自動実行され、未使用のテーマからコラム記事を生成してAPIに投稿します。\n\n**フロー**:\n1. スケジュールトリガー → テーマ取得\n2. テーマ選択 → 記事生成\n3. API投稿 → Slack通知\n\n**エラー発生時**: ワークフローをアクティブにするとError Triggerが動作しSlack通知されます",
+        "height": 340,
+        "width": 360,
+        "color": 4
+      },
+      "id": "9c8263b8-d1b8-4e58-948e-8a75b92665f0",
+      "name": "📋 概要",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🎯 テーマ取得・選択\n\n**GetUnusedThemes**: 全テーマを取得\n\n**FilterUnusedThemes**: used=FALSEのテーマをフィルタリング\n\n**CheckThemeCount**: \n- 未使用テーマあり → RandomThemeSelection\n- 未使用テーマなし → 新テーマ生成フロー\n\n**RandomThemeSelection**: ランダムに1件選択",
+        "height": 320,
+        "width": 300,
+        "color": 6
+      },
+      "id": "400dabf7-4961-4c61-b0a8-9f8b2692170b",
+      "name": "🎯 テーマ選択",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        432,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🆕 新テーマ生成フロー\n\n**未使用テーマが0件の場合に実行**\n\n1. GetAllThemes: 全テーマ取得（重複防止用）\n2. CalculateNextNo: 次の番号計算\n3. BuildThemeGenerationPrompt: プロンプト構築\n4. GenerateThemes: Gemini でテーマ生成\n5. ParseThemeCSV: CSV→JSON変換\n6. AddThemesToSheet: スプレッドシートに追加\n7. NotifySlackThemesGenerated: Slack通知",
+        "height": 320,
+        "width": 380,
+        "color": 3
+      },
+      "id": "baba06cc-7012-4fd0-9292-38b6c66ffff8",
+      "name": "🆕 テーマ生成",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        880,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ✍️ 記事生成フロー\n\n1. **BuildArticlePrompt**: 記事生成プロンプト構築\n   - タイトル = テーマをそのまま使用\n   - [IMAGE: xxx] マーカーを適度に挿入\n2. **GenerateArticle**: Gemini で記事生成\n3. **ParseArticleJSON**: JSON解析（堅牢なパーサー）\n4. **PrepareColumnData**: API用データ整形\n5. **PostColumn**: APIに投稿",
+        "height": 280,
+        "width": 340,
+        "color": 5
+      },
+      "id": "cc0ce607-befb-4b42-959c-23d0db50d921",
+      "name": "✍️ 記事生成",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        752,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📢 Slack通知\n\n**3種類の通知**:\n\n1. ✅ **投稿成功通知** (NotifySlackPosted)\n   - タイトル、カテゴリ、URL\n\n2. 📝 **新テーマ生成通知** (NotifySlackThemesGenerated)\n   - 生成されたテーマ一覧\n\n3. ❌ **エラー通知** (NotifySlackError)\n   - エラー発生ノード、エラー内容\n   - ※ワークフローがアクティブ時のみ動作",
+        "height": 320,
+        "width": 320,
+        "color": 2
+      },
+      "id": "910cccd5-f04e-4683-b46a-59b980ef6f0e",
+      "name": "📢 Slack通知",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1968,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⚠️ エラーハンドリング\n\n**Error Trigger**を使用\n\n- ワークフローがアクティブ（有効化）状態の時のみ動作\n- テスト実行では発火しません\n- 本番運用時にエラーが発生するとSlack通知",
+        "height": 220,
+        "width": 340
+      },
+      "id": "6afe614d-d547-4447-b7af-bb1ce578c41e",
+      "name": "⚠️ エラーハンドリング",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        832
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "fb2091f1-834b-41c1-899a-bbcdd058dd26",
+      "name": "ScheduleTrigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "list",
+          "cachedResultName": "TokuSearch"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "column_themes",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "a264092b-469d-4fb2-8451-7b55cac82d8f",
+      "name": "GetUnusedThemes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        480,
+        208
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// GetUnusedThemesから全テーマを取得\nconst allThemes = $input.all().map(item => item.json);\n\n// used=FALSE または used が空のテーマをフィルタリング（厳密に判定）\nconst unusedThemes = allThemes.filter(theme => {\n  const used = theme.used;\n  // usedが'FALSE'（文字列）またはfalse（boolean）または空の場合のみ未使用と判定\n  const isUnused = used === 'FALSE' || used === false || used === '' || used === null || used === undefined;\n  \n  // デバッグ: 最初の数件のused値をログ出力\n  if (allThemes.indexOf(theme) < 3) {\n    console.log(`🔍 テーマ「${theme.theme || theme.title || '不明'}」のused値: ${JSON.stringify(used)} (型: ${typeof used}), 未使用判定: ${isUnused}`);\n  }\n  \n  return isUnused;\n});\n\nconst count = unusedThemes.length;\nconsole.log(`📊 全テーマ数: ${allThemes.length}件`);\nconsole.log(`📊 未使用テーマ数（used=FALSE）: ${count}件`);\n\n// 未使用テーマが0件の場合は、新テーマ生成フローに進むためのメタデータを返す\n// n8nの仕様上、0件を返すと次のノードが実行されないため、必ず1つのアイテムを返す\nif (count === 0) {\n  console.log(`⚠️ 未使用テーマが0件です。新テーマ生成フローに進みます。`);\n  return [{ json: { _count: 0, _isEmpty: true } }];\n}\n\n// 未使用テーマがある場合は、全アイテムに_countを付与して返す\nconsole.log(`✅ 未使用テーマあり: ${count}件`);\nreturn unusedThemes.map(theme => ({ json: { ...theme, _count: count } }));"
+      },
+      "id": "2a972662-5f60-4dcc-9af1-103ad84265fb",
+      "name": "FilterUnusedThemes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const unusedThemes = $input.all().map(item => item.json);\n\nconst randomIndex = Math.floor(Math.random() * unusedThemes.length);\nconst selectedTheme = unusedThemes[randomIndex];\n\nconsole.log(`✅ テーマ選択: ${selectedTheme.theme}`);\n\nreturn [{ json: selectedTheme }];"
+      },
+      "id": "56d7be0a-f5d0-44b0-99ec-60c2c21ffd79",
+      "name": "RandomThemeSelection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+              "leftValue": "={{ $json._count || 0 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "27c7190f-2934-42f9-bf5a-1420b004bbda",
+      "name": "CheckThemeCount",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        688,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "list",
+          "cachedResultName": "TokuSearch"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "column_themes",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "1b5576dd-0444-4d17-983e-50c81c46ef3c",
+      "name": "GetAllThemes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        928,
+        208
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allThemes = $input.all().map(item => item.json);\n\nif (allThemes.length === 0) {\n  return [{ json: { nextNo: 1 } }];\n}\n\n// Noカラムから最大値を取得\nconst maxNo = Math.max(...allThemes.map(theme => {\n  const no = parseInt(theme.no) || 0;\n  return no;\n}));\n\nconst nextNo = maxNo + 1;\n\nconsole.log(`📊 既存テーマ数: ${allThemes.length}件`);\nconsole.log(`📊 最大No: ${maxNo}, 次のNo: ${nextNo}`);\n\nreturn [{ json: { nextNo, allThemes } }];"
+      },
+      "id": "7402c8e8-a073-4a86-abea-83e0bbaad684",
+      "name": "CalculateNextNo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { nextNo, allThemes } = $json;\nconst themeCount = 10;\n\n// 既存テーマをCSV形式に変換\nlet existingThemesCSV = 'No,レベル,タイトル\\n';\nif (allThemes && allThemes.length > 0) {\n  allThemes.forEach(theme => {\n    const no = theme.no || '';\n    const level = theme.level || '';\n    const title = (theme.theme || '').replace(/,/g, '，'); // CSV区切りを置換\n    existingThemesCSV += `${no},${level},${title}\\n`;\n  });\n}\n\n// レベル配分（バランス配分）\nconst levelDistribution = '初心者向け3件／中級者以上向け3件／上級者向け2件／超ポイ活特化2件';\n\nconst prompt = 'あなたは、生活を豊かにする節約・ポイ活・お得情報の専門ライターです。\\n\\n# 前提\\n- 既存の「お得コラムテーマ」が存在します。\\n- これらと重複しない、新しいコラムテーマを追加で作成します。\\n\\n# 今回の目的\\n- 既存テーマと被らない「新しいコラムテーマ」を ' + themeCount + '件 生成します。\\n- Noは ' + nextNo + ' から始めて、連番で付与します。\\n- レベル配分: ' + levelDistribution + '\\n\\n# 既存テーマ一覧\\n```csv\\n' + existingThemesCSV + '\\n```\\n\\n# テーマ設計ルール\\n- ジャンルは「日常生活・買い物・旅行・お金・テクノロジー・ポイント・時短」などを幅広く含める。\\n- 既存テーマと同じ・類似の切り口にならないように、できる限り重複を避ける。\\n- 読者の関心を引く\"独自性\"のあるテーマを必ず含める。\\n- タイトルは短く、キャッチーにする。\\n- 専門用語はできるだけ避け、一般の読者にもわかる語彙を中心にする。\\n- 違法行為や規約違反につながる内容は含めない。\\n\\n# レベルごとのイメージ\\n- 初心者向け: 「基礎知識」「入門」「今日からできる簡単テク」「失敗しやすいポイントの整理」が中心。\\n- 中級者以上向け: 「比較」「戦略」「組み合わせ」「年間計画」など、一段深い視点を入れる。\\n- 上級者向け: 「仕組み化」「数値管理（還元率・時間単価）」「複数サービス横断」など高度な内容。\\n- 超ポイ活特化: ポイント多重取り・キャンペーン活用・失効管理・税金支払いでのポイント獲得など、ポイ活に強く特化したマニア向けテーマを中心にする。\\n\\n# 出力形式（重要）\\n- 出力は **CSV形式のみ** とし、1行目はヘッダー行とします。\\n- 1行目: No,レベル,タイトル\\n- 2行目以降: No,レベル,タイトル をカンマ区切りで **' + themeCount + '行分** 出力してください。\\n- No は ' + nextNo + ' から始めて、1ずつ増やしてください。\\n- コードブロック（```）や説明文、日本語による前置き・あとがきなど、CSV以外の文字は一切出力しないこと。\\n\\n出力を開始してください:';\n\nreturn [{ json: { prompt, nextNo, themeCount } }];"
+      },
+      "id": "85161f10-e376-4415-9e45-c5fa8e3c74da",
+      "name": "BuildThemeGenerationPrompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json.prompt}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        208
+      ],
+      "id": "540fd536-3580-4e85-b0be-5f1aa700706f",
+      "name": "GenerateThemes",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gojn353h4HLDUzF2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.content.parts[0].text;\n\n// CSV抽出\nlet csvString = rawText.trim()\n  .replace(/^```csv\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/\\s*```$/i, '')\n  .trim();\n\n// CSVをパース\nconst lines = csvString.split(/\\r?\\n/).filter(line => line.trim());\n\nif (lines.length < 2) {\n  throw new Error('CSV形式が不正です。ヘッダー行とデータ行が必要です。');\n}\n\n// ヘッダー行をスキップしてデータ行をパース\nconst themes = [];\nfor (let i = 1; i < lines.length; i++) {\n  const line = lines[i].trim();\n  if (!line) continue;\n  \n  // カンマ区切りで分割（ただし、引用符内のカンマは無視）\n  const parts = line.split(',');\n  if (parts.length >= 3) {\n    const no = parts[0].trim();\n    const level = parts[1].trim();\n    const title = parts.slice(2).join(',').trim().replace(/\"+/g, '\"'); // タイトル内のカンマ対応\n    \n    themes.push({\n      no: parseInt(no) || 0,\n      level: level,\n      theme: title,\n      used: 'FALSE'\n    });\n  }\n}\n\nconsole.log(`✅ テーマパース完了: ${themes.length}件`);\n\nreturn themes.map(theme => ({ json: theme }));"
+      },
+      "id": "7dc895ee-af0d-43d8-9e49-b6322921cbba",
+      "name": "ParseThemeCSV",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 既存テーマを取得（CalculateNextNoから、またはGetAllThemesから）\nlet existingThemes = [];\n\ntry {\n  // まずCalculateNextNoから取得を試みる\n  const calcData = $items('CalculateNextNo');\n  if (calcData && calcData.length > 0 && calcData[0].json.allThemes) {\n    existingThemes = calcData[0].json.allThemes;\n    console.log(`📊 CalculateNextNoから既存テーマ取得: ${existingThemes.length}件`);\n  } else {\n    // フォールバック: GetAllThemesから取得\n    const allThemesData = $items('GetAllThemes');\n    if (allThemesData && allThemesData.length > 0) {\n      existingThemes = allThemesData.map(item => item.json);\n      console.log(`📊 GetAllThemesから既存テーマ取得: ${existingThemes.length}件`);\n    }\n  }\n} catch (e) {\n  console.log(`⚠️ 既存テーマ取得エラー: ${e.message}`);\n  // エラーが発生しても続行（重複チェックをスキップ）\n}\n\n// 生成されたテーマを取得（ParseThemeCSVから）\nconst newThemes = $input.all().map(item => item.json);\n\nif (newThemes.length === 0) {\n  throw new Error('❌ 生成されたテーマがありません');\n}\n\n// 既存テーマが取得できなかった場合は、重複チェックをスキップ\nif (existingThemes.length === 0) {\n  console.log(`⚠️ 既存テーマが取得できませんでした。重複チェックをスキップします。`);\n  return newThemes.map(theme => ({ json: theme }));\n}\n\n// テーマタイトルを正規化する関数（比較用）\nfunction normalizeTheme(theme) {\n  if (!theme || typeof theme !== 'string') return '';\n  return theme\n    .toLowerCase()\n    .replace(/[\\s　]/g, '') // 全角・半角スペースを除去\n    .replace(/[！？。、]/g, '') // 句読点を除去\n    .trim();\n}\n\n// 既存テーマの正規化済みタイトルセットを作成\nconst existingNormalized = new Set(\n  existingThemes\n    .filter(theme => theme && theme.theme)\n    .map(theme => normalizeTheme(theme.theme))\n    .filter(normalized => normalized.length > 0)\n);\n\nconsole.log(`📊 既存テーマ（正規化済み）: ${existingNormalized.size}件`);\n\n// 重複チェック\nconst uniqueThemes = [];\nconst duplicateThemes = [];\n\nfor (const newTheme of newThemes) {\n  if (!newTheme.theme) {\n    console.log(`⚠️ テーマタイトルが空です。スキップします。`);\n    continue;\n  }\n  \n  const normalized = normalizeTheme(newTheme.theme);\n  \n  if (normalized.length === 0) {\n    console.log(`⚠️ 正規化後のテーマが空です。スキップします: ${newTheme.theme}`);\n    continue;\n  }\n  \n  // 完全一致チェック\n  if (existingNormalized.has(normalized)) {\n    duplicateThemes.push(newTheme.theme);\n    console.log(`⚠️ 重複テーマ検出: ${newTheme.theme}`);\n    continue;\n  }\n  \n  // 部分一致チェック（既存テーマの80%以上が含まれている場合）\n  let isDuplicate = false;\n  for (const existingNormalizedTheme of existingNormalized) {\n    if (existingNormalizedTheme.length > 0 && normalized.length > 0) {\n      // 短い方の文字列が長い方に80%以上含まれているかチェック\n      const shorter = existingNormalizedTheme.length < normalized.length \n        ? existingNormalizedTheme \n        : normalized;\n      const longer = existingNormalizedTheme.length >= normalized.length \n        ? existingNormalizedTheme \n        : normalized;\n      \n      if (longer.includes(shorter) && shorter.length / longer.length >= 0.8) {\n        const similarTheme = existingThemes.find(t => normalizeTheme(t.theme) === existingNormalizedTheme);\n        duplicateThemes.push(newTheme.theme);\n        console.log(`⚠️ 類似テーマ検出: ${newTheme.theme} (類似: ${similarTheme?.theme || existingNormalizedTheme})`);\n        isDuplicate = true;\n        break;\n      }\n    }\n  }\n  \n  if (!isDuplicate) {\n    uniqueThemes.push(newTheme);\n  }\n}\n\n// 結果をログ出力\nconsole.log(`✅ 重複チェック完了:`);\nconsole.log(`  - 生成テーマ数: ${newThemes.length}件`);\nconsole.log(`  - 重複テーマ数: ${duplicateThemes.length}件`);\nconsole.log(`  - ユニークテーマ数: ${uniqueThemes.length}件`);\n\nif (duplicateThemes.length > 0) {\n  console.log(`⚠️ 重複テーマ一覧: ${duplicateThemes.join(', ')}`);\n}\n\nif (uniqueThemes.length === 0) {\n  throw new Error(`❌ すべてのテーマが重複しています。生成された${newThemes.length}件すべてが既存テーマと重複しています。`);\n}\n\n// ユニークなテーマのみを返す\nreturn uniqueThemes.map(theme => ({ json: theme }));"
+      },
+      "id": "b2792570-1fba-431f-961d-afc9cacf7a3e",
+      "name": "CheckThemeDuplicates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1856,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "list",
+          "cachedResultName": "TokuSearch"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 348743133,
+          "mode": "list",
+          "cachedResultName": "column_themes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14/edit#gid=348743133"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "no": "={{ $json.no }}",
+            "level": "={{ $json.level }}",
+            "theme": "={{ $json.theme }}",
+            "used": "={{ $json.used }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "no",
+              "displayName": "no",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "level",
+              "displayName": "level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "theme",
+              "displayName": "theme",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "used",
+              "displayName": "used",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "used_at",
+              "displayName": "used_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "31ec2781-5f5d-4c3a-a9e3-c3913b2377e8",
+      "name": "AddThemesToSheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1936,
+        208
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// BuildSlackThemesMessageから渡されるデータにはthemes配列が含まれている\nconst inputData = $json;\n\n// themes配列を取得（BuildSlackThemesMessageから渡される場合）\nlet newThemes = inputData.themes;\n\n// もしthemesがない場合は、入力全体をテーマとして扱う（フォールバック）\nif (!newThemes || !Array.isArray(newThemes) || newThemes.length === 0) {\n  newThemes = $input.all().map(item => item.json);\n}\n\nif (newThemes.length === 0) {\n  throw new Error('❌ 生成されたテーマがありません');\n}\n\nconst randomIndex = Math.floor(Math.random() * newThemes.length);\nconst selectedTheme = newThemes[randomIndex];\n\nconsole.log(`✅ 新規テーマから選択: ${selectedTheme.theme}`);\nconsole.log(`📊 選択されたテーマNo: ${selectedTheme.no}`);\n\nreturn [{ json: selectedTheme }];"
+      },
+      "id": "4f73993e-42b9-4203-bbd8-d45c58da98f6",
+      "name": "SelectFromNewThemes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 安全にカラム情報を取得（優先: PrepareColumnData → PostColumnレスポンス → 入力）\nconst prepared = $items('PrepareColumnData')[0]?.json || {};\nconst postResp = $json || {};\nconst fallbackInput = $input.item?.json || {};\n\n// 可能な限りPrepareColumnDataを採用し、欠けていればレスポンス/入力から補完\nconst columnData = {\n  slug: prepared.slug || postResp.slug || fallbackInput.slug || '',\n  title: prepared.title || postResp.title || fallbackInput.title || '',\n  category: prepared.category || postResp.category || fallbackInput.category || '',\n  url: prepared.slug\n    ? `https://tokusearch.vercel.app/columns/${prepared.slug}`\n    : postResp.url || fallbackInput.url || ''\n};\n\nconst message = `🎉 コラム自動生成完了！\\n\\nタイトル: ${columnData.title || '（取得できませんでした）'}\\nカテゴリ: ${columnData.category || '（取得できませんでした）'}\\nURL: ${columnData.url || '（URLなし）'}\\n\\n※画像なし版`;\n\nreturn [{ json: { text: message, url: columnData.url, title: columnData.title } }];"
+      },
+      "id": "d7aa975a-3e96-409d-8965-4b2f64e07de9",
+      "name": "BuildSlackPostedMessage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#daily_o-toku",
+          "mode": "name"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        2272,
+        528
+      ],
+      "id": "9f47196c-e04a-45fc-9d1d-99dd12415eb6",
+      "name": "NotifySlackPosted",
+      "webhookId": "a1ea8121-abd5-4a24-a6b4-655ddf5a6594",
+      "credentials": {
+        "slackApi": {
+          "id": "kahTvH10blaEP2kb",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const themes = $input.all().map(item => item.json);\n\nlet message = `📝 新規コラムテーマ生成完了！\n\n生成数: ${themes.length}件\\n\\n`;\n\nmessage += '```\\n';\nmessage += 'No,レベル,タイトル\\n';\nthemes.forEach(theme => {\n  message += `${theme.no},${theme.level},${theme.theme}\\n`;\n});\nmessage += '```';\n\nreturn [{ json: { text: message, themes: themes } }];"
+      },
+      "id": "c4ecc181-b97b-450d-b0c4-002c2eb3c3ac",
+      "name": "BuildSlackThemesMessage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2096,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#daily_o-toku",
+          "mode": "name"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        2608,
+        832
+      ],
+      "id": "ee050f73-d714-4cde-ba61-1ea62582a494",
+      "name": "NotifySlackThemesGenerated",
+      "webhookId": "a1ea8121-abd5-4a24-a6b4-655ddf5a6594",
+      "credentials": {
+        "slackApi": {
+          "id": "kahTvH10blaEP2kb",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const theme = $json.theme;\nconst level = $json.level;\nconst themeNo = $json.no;\n\n// タイトルはテーマをそのまま使用\nconst prompt = `\nあなたはJSON生成の専門家です。有効なJSONオブジェクトのみを出力してください。\n\n## 記事情報\n- タイトル: ${theme}\n- レベル: ${level}\n\n## 重要なルール\n1. JSONオブジェクトのみを出力（マークダウンのコードブロック、説明文は不要）\n2. { で始まり } で終わること\n3. content_markdown内の改行は \\\\n を使用\n4. 特殊文字（引用符、バックスラッシュ）は適切にエスケープ\n5. content_markdownは2500〜3500文字程度\n6. 重要な情報には <mark>テキスト</mark> を使用（黄色背景+下線で表示）\n7. 強調には **太字** を使用\n\n## 出力するJSONの構造\n{\n  \"title\": \"${theme}\",\n  \"description\": \"記事の要約（80〜120文字）\",\n  \"content_markdown\": \"記事本文（Markdown形式）\",\n  \"category\": \"以下から1つ選択: ポイント活用, クレジットカード, 節約術, 旅行, キャッシュレス, 家計管理, ふるさと納税\",\n  \"tags\": \"タグ1,タグ2,タグ3\"\n}\n\n## 記事の構成（content_markdown）\n1. **導入**（読者の悩みと解決策の提示）\n2. **基本の考え方**（コアコンセプトの説明）\n3. **具体的なステップ**（実践方法を順序立てて）\n4. **注意点・よくある失敗**（避けるべきポイント）\n5. **まとめ**（要点の振り返り）\n\n## 読みやすさのためのフォーマット指針\n- 各セクションの後に空行を入れる（\\\\n\\\\n）\n- 箇条書きの前後にも空行を入れる\n- 長い段落は2〜3文ごとに改行を入れる\n- 見出し（##）の前には必ず空行を入れる\n- 1文は60文字以内を目安に\n\n## 装飾の使い方\n- **太字**: 重要な用語、数字（各セクション2〜3箇所）\n- <mark>ハイライト</mark>: 絶対に覚えてほしい情報（記事全体で1〜3箇所）\n  - 使用基準: 核心となる概念、重大な注意点、重要な数字・期限\n  - 例: <mark>ポイント還元率20%は11月30日まで</mark>\n- 箇条書き（- または *）: リストの場合\n- 番号付きリスト（1. 2. 3.）: 手順の場合\n\n## 画像プレースホルダー\n- [IMAGE: 説明] の形式で、UI的に画像があると理解しやすい箇所に挿入\n- 記事全体で2〜4箇所程度、自然な位置に配置\n- 段落の区切り（空行の後）に配置すること\n- 例:\n  * [IMAGE: ポイント還元率の比較表]\n  * [IMAGE: 申し込み手順のフローチャート]\n  * [IMAGE: アプリの画面イメージ]\n  * [IMAGE: 節約効果のグラフ]\n\n## 出力開始\nJSONのみを出力してください:\n`.trim();\n\nreturn [{ json: { prompt, theme, level, themeNo } }];"
+      },
+      "id": "94943b39-c9a7-4ec0-b696-8fff0f37904a",
+      "name": "BuildArticlePrompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{$json.prompt}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        528
+      ],
+      "id": "770b3155-e4c1-4534-843a-8d4b6235e9db",
+      "name": "GenerateArticle",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gojn353h4HLDUzF2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// LLMからの生テキストを取得\nconst rawText = $json.content.parts[0].text;\nconsole.log('📥 LLM出力（先頭500文字）:', rawText.substring(0, 500));\n\n// Step 1: コードブロックを除去してJSONを抽出\nlet jsonString = rawText.trim();\n\n// ```json ... ``` や ``` ... ``` を除去\njsonString = jsonString.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/i, '').trim();\n\n// Step 2: JSONをパース（配列 or オブジェクト）\nlet article;\ntry {\n  const parsed = JSON.parse(jsonString);\n  // 配列形式の場合は最初の要素を取得\n  article = Array.isArray(parsed) ? parsed[0] : parsed;\n  console.log('✅ JSON直接パース成功');\n} catch (e) {\n  console.log('⚠️ JSON直接パース失敗、詳細パースを試行...');\n  \n  // JSONの { } を見つける\n  const jsonStart = jsonString.indexOf('{');\n  const jsonEnd = jsonString.lastIndexOf('}');\n  \n  if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {\n    throw new Error('JSONの { } が見つかりません。LLM出力: ' + rawText.substring(0, 200));\n  }\n  \n  jsonString = jsonString.substring(jsonStart, jsonEnd + 1);\n  console.log('📝 JSON抽出完了（長さ: ' + jsonString.length + '文字）');\n  \n  try {\n    const parsed = JSON.parse(jsonString);\n    article = Array.isArray(parsed) ? parsed[0] : parsed;\n  } catch (e2) {\n    throw new Error('JSONパース失敗: ' + e2.message);\n  }\n}\n\n// 必須フィールドの検証（content_markdownのみ必須）\nif (!article.content_markdown) {\n  throw new Error('content_markdownフィールドがありません');\n}\n\n// テーマ情報を取得\nconst theme = $items('BuildArticlePrompt')[0].json.theme;\nconst level = $items('BuildArticlePrompt')[0].json.level;\nconst themeNo = $items('BuildArticlePrompt')[0].json.themeNo;\n\n// タイトルがない場合はテーマを使用\nif (!article.title) {\n  console.log('⚠️ titleフィールドがないため、テーマを使用します');\n  article.title = theme;\n}\n\n// 最終的な結果を構築（テーマで上書き）\nconst result = {\n  title: theme, // テーマをそのままタイトルとして使用\n  description: article.description || '',\n  content_markdown: article.content_markdown,\n  category: article.category || 'ポイント活用',\n  tags: article.tags || '',\n  theme: theme,\n  level: level,\n  themeNo: themeNo\n};\n\nconsole.log('✅ 記事パース完了:', result.title);\n\nreturn [{ json: result }];"
+      },
+      "id": "f0c2a817-b989-4f14-8c2d-9f1de4354f59",
+      "name": "ParseArticleJSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const articleData = $json;\n\n// テーマ情報\nconst theme = $items('BuildArticlePrompt')[0].json.theme;\nconst level = $items('BuildArticlePrompt')[0].json.level;\nconst themeNo = $items('BuildArticlePrompt')[0].json.themeNo;\n\n// タイトルが無い場合はテーマを採用して安全に処理\nconst safeTitle = articleData.title || theme || '';\n\n// 日本語対応のスラッグ生成（lib/columns.tsと完全一致）\nconst slug = safeTitle\n  .toLowerCase()\n  .replace(/[^a-z0-9\\u3040-\\u309f\\u30a0-\\u30ff\\u4e00-\\u9faf]+/g, '-')\n  .replace(/^-+|-+$/g, '');\n\nconst contentHtml = (articleData.content_markdown || '')\n  .replace(/^### (.*$)/gim, '<h3>$1</h3>')\n  .replace(/^## (.*$)/gim, '<h2>$1</h2>')\n  .replace(/^# (.*$)/gim, '<h1>$1</h1>')\n  .replace(/\\*\\*(.*?)\\*\\*/gim, '<strong>$1</strong>')\n  .replace(/\\*(.*?)\\*/gim, '<em>$1</em>')\n  .replace(/\\n\\n/gim, '</p><p>')\n  .replace(/\\n/gim, '<br>');\n\nconst columnData = {\n  slug,\n  title: safeTitle,\n  description: articleData.description || '',\n  content_markdown: articleData.content_markdown || '',\n  content_html: '<p>' + contentHtml + '</p>',\n  category: articleData.category || 'ポイント活用',\n  tags: articleData.tags || '',\n  thumbnail_url: '',\n  author: 'TokuSearch AI',\n  status: 'published',\n  is_featured: false,\n  theme: theme,\n  level: level,\n  themeNo: themeNo\n};\n\nconsole.log('✅ データ準備完了:', columnData.title);\nconsole.log('📝 生成されたスラッグ:', slug);\n\nreturn [{ json: columnData }];"
+      },
+      "id": "d80fc7aa-79ac-4c3b-8517-269dd223f646",
+      "name": "PrepareColumnData",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tokusearch.vercel.app/api/admin/columns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "d976df47-a136-428b-9ee0-94117a0be5ce",
+      "name": "PostColumn",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1776,
+        528
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "RT6aq4TB1Vj8V2Tn",
+          "name": "Credential Name"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14",
+          "mode": "list",
+          "cachedResultName": "TokuSearch",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 348743133,
+          "mode": "list",
+          "cachedResultName": "column_themes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iz1ApPwoLMMyqeQW_GA0XYM1qU74tzULNVq6vav3g14/edit#gid=348743133"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "no": "={{$items('BuildArticlePrompt')[0].json.themeNo}}",
+            "used": "TRUE",
+            "used_at": "={{new Date().toISOString()}}"
+          },
+          "matchingColumns": [
+            "no"
+          ],
+          "schema": [
+            {
+              "id": "no",
+              "displayName": "no",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "level",
+              "displayName": "level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "theme",
+              "displayName": "theme",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "used",
+              "displayName": "used",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "used_at",
+              "displayName": "used_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "61024678-2068-4cb0-93a7-ebda258aab4a",
+      "name": "UpdateThemeUsed",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2544,
+        528
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleApi": {
+          "id": "r9kAyVencycJeNjy",
+          "name": "Google Service Account account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const columnData = $items('PrepareColumnData')[0].json;\n\nconst message = `🎉 コラム自動生成完了！\n\nタイトル: ${columnData.title}\nカテゴリ: ${columnData.category}\nURL: https://tokusearch.vercel.app/columns/${columnData.slug}\n\n※画像なし版`;\n\nconsole.log(message);\n\nreturn [{ json: { message, success: true } }];"
+      },
+      "id": "44e80c63-31e2-47b4-8c93-6345d077ee03",
+      "name": "BuildCompletionMessage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2784,
+        528
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "2ceb29b3-7df6-4f31-b555-951c4c9c1ef9",
+      "name": "ErrorTrigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        256,
+        992
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Error Triggerからのデータを取得\nconst execution = $json.execution || {};\nconst workflow = $json.workflow || {};\n\nconst nodeName = execution.lastNodeExecuted || 'Unknown';\nconst errorData = execution.error || {};\nconst errorMessage = errorData.message || 'エラーが発生しました';\nconst workflowName = workflow.name || 'コラム自動生成';\n\nconst message = `❌ ワークフローエラー発生\n\nワークフロー: ${workflowName}\nノード: ${nodeName}\nエラー内容: ${errorMessage}\n時刻: ${new Date().toISOString()}\n\nワークフローを確認してください。`;\n\nreturn [{ json: { text: message } }];"
+      },
+      "id": "e1a9b123-b1ac-4d1a-909e-aa66dd4a53ae",
+      "name": "BuildSlackErrorMessage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        992
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#daily_o-toku",
+          "mode": "name"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        688,
+        992
+      ],
+      "id": "a897256d-df5b-451b-8e04-d3d5e07b9a40",
+      "name": "NotifySlackError",
+      "webhookId": "a1ea8121-abd5-4a24-a6b4-655ddf5a6594",
+      "credentials": {
+        "slackApi": {
+          "id": "kahTvH10blaEP2kb",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "ScheduleTrigger": {
+      "main": [
+        [
+          {
+            "node": "GetUnusedThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetUnusedThemes": {
+      "main": [
+        [
+          {
+            "node": "FilterUnusedThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FilterUnusedThemes": {
+      "main": [
+        [
+          {
+            "node": "CheckThemeCount",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CheckThemeCount": {
+      "main": [
+        [
+          {
+            "node": "RandomThemeSelection",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GetAllThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetAllThemes": {
+      "main": [
+        [
+          {
+            "node": "CalculateNextNo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CalculateNextNo": {
+      "main": [
+        [
+          {
+            "node": "BuildThemeGenerationPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildThemeGenerationPrompt": {
+      "main": [
+        [
+          {
+            "node": "GenerateThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerateThemes": {
+      "main": [
+        [
+          {
+            "node": "ParseThemeCSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseThemeCSV": {
+      "main": [
+        [
+          {
+            "node": "CheckThemeDuplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CheckThemeDuplicates": {
+      "main": [
+        [
+          {
+            "node": "AddThemesToSheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AddThemesToSheet": {
+      "main": [
+        [
+          {
+            "node": "BuildSlackThemesMessage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildSlackThemesMessage": {
+      "main": [
+        [
+          {
+            "node": "NotifySlackThemesGenerated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NotifySlackThemesGenerated": {
+      "main": [
+        [
+          {
+            "node": "SelectFromNewThemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SelectFromNewThemes": {
+      "main": [
+        [
+          {
+            "node": "BuildArticlePrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RandomThemeSelection": {
+      "main": [
+        [
+          {
+            "node": "BuildArticlePrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildArticlePrompt": {
+      "main": [
+        [
+          {
+            "node": "GenerateArticle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerateArticle": {
+      "main": [
+        [
+          {
+            "node": "ParseArticleJSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseArticleJSON": {
+      "main": [
+        [
+          {
+            "node": "PrepareColumnData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareColumnData": {
+      "main": [
+        [
+          {
+            "node": "PostColumn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostColumn": {
+      "main": [
+        [
+          {
+            "node": "BuildSlackPostedMessage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildSlackPostedMessage": {
+      "main": [
+        [
+          {
+            "node": "NotifySlackPosted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NotifySlackPosted": {
+      "main": [
+        [
+          {
+            "node": "UpdateThemeUsed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpdateThemeUsed": {
+      "main": [
+        [
+          {
+            "node": "BuildCompletionMessage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ErrorTrigger": {
+      "main": [
+        [
+          {
+            "node": "BuildSlackErrorMessage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildSlackErrorMessage": {
+      "main": [
+        [
+          {
+            "node": "NotifySlackError",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7af99a6f-779b-4633-a900-568db5906a3d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fefffd21e64fa94994bb4bf38b5a050c59f6cf28bd3cad9da0a5804220d9e97f"
+  },
+  "id": "lPXWsFe187M5lr0T",
+  "tags": []
+}
