@@ -60,7 +60,7 @@ async function createDefaultAdmin() {
 
     console.log('\n✅ デフォルト管理者アカウントを作成しました！\n');
     console.log('--- ログイン情報 ---');
-    console.log(`URL: http://localhost:3000/admin/login`);
+    console.log(`URL: http://localhost:3000/login`);
     console.log(`ユーザー名: ${DEFAULT_ADMIN.username}`);
     console.log(`パスワード: ${DEFAULT_ADMIN.password}`);
     console.log('\n⚠️  セキュリティのため、初回ログイン後にパスワードを変更してください！');

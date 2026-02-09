@@ -63,7 +63,7 @@ node scripts/create-default-admin.js
 👤 デフォルト管理者アカウントを作成します
 ✅ デフォルト管理者アカウントを作成しました！
 --- ログイン情報 ---
-URL: http://localhost:3000/admin/login
+URL: http://localhost:3000/login
 ユーザー名: admin
 パスワード: admin123
 ```
@@ -80,7 +80,7 @@ npm run dev
 
 ## ✅ ステップ5: 管理画面にログイン
 
-1. ブラウザで `http://localhost:3000/admin/login` にアクセス
+1. ブラウザで `http://localhost:3000/login` にアクセス
 2. ユーザー名: `admin` / パスワード: `admin123` でログイン
 3. ログイン成功！ダッシュボードが表示されます
 

@@ -54,7 +54,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, [isOpen]);
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/admin/login' });
+    await signOut({ callbackUrl: '/login' });
   };
 
   return (

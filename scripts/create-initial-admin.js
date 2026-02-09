@@ -66,7 +66,7 @@ async function createInitialAdmin() {
     console.log(`表示名: ${display_name}`);
     console.log(`メール: ${email}`);
     console.log(`権限: admin`);
-    console.log('\n管理画面にログインできます: /admin/login');
+    console.log('\n管理画面にログインできます: /login');
 
     rl.close();
   } catch (error) {
