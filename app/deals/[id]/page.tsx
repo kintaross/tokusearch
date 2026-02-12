@@ -10,6 +10,7 @@ import { DealStructuredData, BreadcrumbStructuredData } from '@/components/Struc
 import { linkifyText } from '@/lib/linkify';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import DealDetailMeActions from '@/components/DealDetailMeActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -248,6 +249,10 @@ export default async function DealDetailPage({
                 </div>
               </section>
             )}
+
+            <section className="pt-6 border-t border-gray-200">
+              <DealDetailMeActions dealId={deal.id} />
+            </section>
           </div>
         </div>
       </article>

@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbPool } from '@/lib/db';
+import { isIngestAuthorized } from '@/lib/ingest-auth';
 
 export const dynamic = 'force-dynamic';
-
-function authOk(req: NextRequest): boolean {
-  const apiKey = req.headers.get('x-api-key') || '';
-  const expected = process.env.N8N_API_KEY || process.env.N8N_INGEST_API_KEY;
-  return !!expected && apiKey === expected;
-}
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { no: string } }
 ) {
   try {
-    if (!authOk(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!isIngestAuthorized(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const no = parseInt(params.no, 10);
     if (!Number.isFinite(no)) {

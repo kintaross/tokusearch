@@ -24,6 +24,31 @@ DB移行後は、n8nが **Google Sheetsに書き込み続ける** とDB側が更
 
 ---
 
+## 1.5) n8n側で N8N_API_KEY をどこに入力するか
+
+ワークフローは **`$env.N8N_API_KEY`** を参照しているため、n8n の **環境変数** に同じ名前で設定します。
+
+### n8n Cloud の場合
+
+1. 左メニュー **Settings**（歯車アイコン）を開く
+2. **Variables** または **Environment variables** を開く
+3. **Add variable** で以下を追加
+   - **Key**: `N8N_API_KEY`
+   - **Value**: （Vercel に設定したのと同じ値、例: `cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ`）
+4. 保存後、ワークフローを再実行（または n8n を再起動してから実行）
+
+### セルフホスト（Docker / 手動起動）の場合
+
+- **Docker**: `docker run` や `docker-compose.yml` の `environment` に  
+  `N8N_API_KEY=cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ` を追加
+- **手動起動**: 起動前にシェルで  
+  `export N8N_API_KEY="cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"`  
+  または `.env` に `N8N_API_KEY=...` を書いてから n8n を起動
+
+※ 値は Vercel の `N8N_API_KEY` と **完全に同じ** にしてください。違うと Ingest API が 401 を返します。
+
+---
+
 ## 2) n8n側の変更（ノード差し替え）
 
 ### やること

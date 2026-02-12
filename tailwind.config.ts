@@ -9,6 +9,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        primary: "#D48166",
+        "accent-brown": "#5C5248",
+        "warm-cream": "#F9F6F2",
+        "soft-greige": "#EFEAE4",
+        "background-light": "#FAF9F6",
+        "tag-saving": "#8A9A5B",
         brand: {
           50: '#e6f8f4',
           100: '#c2eee4',
@@ -28,7 +34,14 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'Yu Gothic', 'YuGothic', 'sans-serif'],
+        display: ["Quicksand", "Noto Sans JP", "sans-serif"],
+        sans: ["Quicksand", "Noto Sans JP", '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'Yu Gothic', 'YuGothic', 'sans-serif'],
+      },
+      borderRadius: {
+        DEFAULT: "1rem",
+        "xl": "1.5rem",
+        "2xl": "2rem",
+        "3xl": "2.5rem",
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out forwards',

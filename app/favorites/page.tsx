@@ -2,34 +2,47 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { Heart, ArrowLeft } from 'lucide-react';
 import DealCard from '@/components/DealCard';
 import { Deal } from '@/types/deal';
 import { getFavorites } from '@/lib/storage';
 
+function isEndUser(session: { user?: { role?: string } } | null): boolean {
+  if (!session?.user) return false;
+  const role = (session.user as { role?: string }).role;
+  return role !== 'admin' && role !== 'editor';
+}
+
 export default function FavoritesPage() {
+  const { data: session, status } = useSession();
   const [favoriteDeals, setFavoriteDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadFavorites = async () => {
       try {
-        const favoriteIds = getFavorites();
-        
+        let favoriteIds: string[] = [];
+        if (status === 'authenticated' && isEndUser(session)) {
+          const res = await fetch('/api/me/favorites');
+          if (res.ok) {
+            const data = await res.json();
+            favoriteIds = data.dealIds ?? [];
+          }
+        } else {
+          favoriteIds = getFavorites();
+        }
+
         if (favoriteIds.length === 0) {
           setFavoriteDeals([]);
           setLoading(false);
           return;
         }
 
-        // お気に入りIDリストを使ってデータを取得
         const response = await fetch('/api/deals');
         const data = await response.json();
-        
-        const filtered = data.deals.filter((deal: Deal) => 
-          favoriteIds.includes(deal.id)
-        );
-        
+        const byId = new Map((data.deals ?? []).map((d: Deal) => [d.id, d]));
+        const filtered = favoriteIds.map((id) => byId.get(id)).filter(Boolean) as Deal[];
         setFavoriteDeals(filtered);
       } catch (error) {
         console.error('お気に入りの読み込みエラー:', error);
@@ -38,8 +51,9 @@ export default function FavoritesPage() {
       }
     };
 
+    if (status === 'loading') return;
     loadFavorites();
-  }, []);
+  }, [session, status]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">

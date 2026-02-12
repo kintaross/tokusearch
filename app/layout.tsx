@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ViewModeProvider } from '@/contexts/ViewModeContext'
 import Header from '@/components/Header'
+import Providers from '@/components/Providers'
 import { WebsiteStructuredData, OrganizationStructuredData } from '@/components/StructuredData'
 import { metadata } from './metadata'
 import './globals.css'
@@ -18,28 +19,22 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="shortcut icon" href="/favicon.svg" />
+        <link href="https://fonts.googleapis.com" rel="preconnect"/>
+        <link crossOrigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+        <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
         <WebsiteStructuredData />
         <OrganizationStructuredData />
       </head>
-      <body className="antialiased">
+      <body className="antialiased font-sans text-accent-brown bg-background-light">
+        <Providers>
         <ViewModeProvider>
           <Header />
-          <main className="min-h-screen bg-surface-100">
+          <main className="min-h-screen">
             {children}
           </main>
-          <footer className="bg-white border-t border-[#e5e2da] mt-24">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-              <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-[#6b6f76]">
-                <div className="font-semibold text-[#0f1419]">TokuSearch</div>
-                <div className="flex items-center gap-4">
-                  <Link href="/about" className="hover:text-[#0f1419] transition-colors">アバウト</Link>
-                  <Link href="/policy" className="hover:text-[#0f1419] transition-colors">ポリシー</Link>
-                </div>
-                <p>© 2024 お得情報まとめサイト</p>
-              </div>
-            </div>
-          </footer>
         </ViewModeProvider>
+        </Providers>
       </body>
     </html>
   )

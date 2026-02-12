@@ -120,4 +120,93 @@ CREATE TABLE IF NOT EXISTS migration_conflicts (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- =========================
+-- users (一般ユーザー・Googleログイン)
+-- =========================
+CREATE TABLE IF NOT EXISTS users (
+  id             TEXT PRIMARY KEY,
+  google_sub     TEXT NOT NULL UNIQUE,
+  email          TEXT,
+  name           TEXT,
+  avatar_url     TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_login_at  TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_google_sub ON users (google_sub);
+
+-- =========================
+-- user_favorites (お気に入り)
+-- =========================
+CREATE TABLE IF NOT EXISTS user_favorites (
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  deal_id    TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, deal_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_favorites_user_id ON user_favorites (user_id);
+
+-- =========================
+-- user_saved_deals (保存済みお得)
+-- =========================
+CREATE TABLE IF NOT EXISTS user_saved_deals (
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  deal_id    TEXT NOT NULL,
+  saved_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  list_id    TEXT,
+  PRIMARY KEY (user_id, deal_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_saved_deals_user_id ON user_saved_deals (user_id);
+
+-- =========================
+-- user_deal_notes (お得ごとのメモ)
+-- =========================
+CREATE TABLE IF NOT EXISTS user_deal_notes (
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  deal_id    TEXT NOT NULL,
+  note       TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, deal_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_deal_notes_user_id ON user_deal_notes (user_id);
+
+-- =========================
+-- user_saved_searches (保存検索)
+-- =========================
+CREATE TABLE IF NOT EXISTS user_saved_searches (
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  query_json  JSONB NOT NULL DEFAULT '{}',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_saved_searches_user_id ON user_saved_searches (user_id);
+
+-- =========================
+-- user_deal_transactions (お得活動の入出金)
+-- =========================
+CREATE TABLE IF NOT EXISTS user_deal_transactions (
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  deal_id     TEXT,
+  occurred_on DATE NOT NULL,
+  direction   TEXT NOT NULL CHECK (direction IN ('in', 'out')),
+  value_type  TEXT NOT NULL CHECK (value_type IN ('cash', 'points', 'other')),
+  amount      NUMERIC(12,2) NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed')),
+  memo        TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_deal_transactions_user_id ON user_deal_transactions (user_id);
+CREATE INDEX IF NOT EXISTS idx_user_deal_transactions_deal_id ON user_deal_transactions (deal_id);
+CREATE INDEX IF NOT EXISTS idx_user_deal_transactions_occurred_on ON user_deal_transactions (occurred_on);
+
 COMMIT;

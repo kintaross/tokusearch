@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbPool } from '@/lib/db';
+import { isIngestAuthorized } from '@/lib/ingest-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const apiKey = request.headers.get('x-api-key') || '';
-    const expected = process.env.N8N_API_KEY || process.env.N8N_INGEST_API_KEY;
-    if (!expected || apiKey !== expected) {
+    if (!isIngestAuthorized(request)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

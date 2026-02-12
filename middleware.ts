@@ -18,13 +18,15 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith('/maintenance')) return NextResponse.next()
   if (pathname.startsWith('/admin')) return NextResponse.next()
   if (pathname === '/login') return NextResponse.next()
+  if (pathname === '/signin') return NextResponse.next()
 
-  // Back door: allow logged-in users (e.g. admins) to browse the whole site.
+  // Back door: only admin/editor can bypass maintenance; end-users see maintenance.
   const token = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
   })
-  if (token) return NextResponse.next()
+  const role = token?.role as string | undefined
+  if (role === 'admin' || role === 'editor') return NextResponse.next()
 
   const url = req.nextUrl.clone()
   url.pathname = '/maintenance'

@@ -135,7 +135,11 @@
             },
             {
               "name": "x-api-key",
-              "value": "={{$env.N8N_API_KEY}}"
+              "value": "cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
             }
           ]
         },
@@ -223,7 +227,11 @@
             },
             {
               "name": "x-api-key",
-              "value": "={{$env.N8N_API_KEY}}"
+              "value": "cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
             }
           ]
         },
@@ -335,7 +343,11 @@
             },
             {
               "name": "x-api-key",
-              "value": "={{$env.N8N_API_KEY}}"
+              "value": "cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
             }
           ]
         },
@@ -534,7 +546,11 @@
             },
             {
               "name": "x-api-key",
-              "value": "={{$env.N8N_API_KEY}}"
+              "value": "cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
             }
           ]
         },
@@ -566,7 +582,11 @@
             },
             {
               "name": "x-api-key",
-              "value": "={{$env.N8N_API_KEY}}"
+              "value": "cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
             }
           ]
         },

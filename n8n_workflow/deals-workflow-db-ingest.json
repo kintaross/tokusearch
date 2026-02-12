@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "jsCode": "// Grokから返ってきた\"choices[0].message.content\"にJSON文字列がある\ntry {\n  const response = $json.choices[0].message.content;\n  const items = JSON.parse(response); // 文字列→配列に変換\n  return items.map(item => ({ json: item }));\n} catch (err) {\n  return [{ json: { error: true, message: err.message } }];\n}\n"
+        "jsCode": "// Grok（Responses API）のレスポンスからJSON配列文字列を取り出してパース\n// 互換: 旧 chat/completions 形式もフォールバックで対応\ntry {\n  const body = $json;\n\n  // 1) Responses API: output_text\n  let text = body && typeof body.output_text === 'string' ? body.output_text : null;\n\n  // 2) Responses API: output[].content[].text (type=output_text)\n  if (!text && body && Array.isArray(body.output)) {\n    const parts = [];\n    for (const out of body.output) {\n      if (!out || !Array.isArray(out.content)) continue;\n      for (const c of out.content) {\n        if (!c) continue;\n        if ((c.type === 'output_text' || c.type === 'text') && typeof c.text === 'string') {\n          parts.push(c.text);\n        }\n      }\n    }\n    if (parts.length) text = parts.join('');\n  }\n\n  // 3) Legacy: chat/completions\n  if (!text && body && body.choices && body.choices[0] && body.choices[0].message) {\n    const legacy = body.choices[0].message.content;\n    if (typeof legacy === 'string') text = legacy;\n  }\n\n  if (!text || typeof text !== 'string') {\n    throw new Error('Grok response text not found (output_text/output[].content[].text)');\n  }\n\n  const items = JSON.parse(text);\n  if (!Array.isArray(items)) throw new Error('Grok output is not a JSON array');\n\n  return items.map(item => ({ json: item }));\n} catch (err) {\n  return [{ json: { error: true, message: err.message, raw: $json } }];\n}\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -30,7 +30,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.x.ai/v1/chat/completions",
+        "url": "https://api.x.ai/v1/responses",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "xAiApi",
         "sendBody": true,
@@ -38,15 +38,15 @@
           "parameters": [
             {
               "name": "model",
-              "value": "grok-4"
+              "value": "grok-4-1-fast-reasoning"
             },
             {
-              "name": "search_parameters",
-              "value": "={{ {   \"mode\": \"auto\",   \"from_date\": $json.startDate,   \"to_date\": $json.endDate,   \"max_search_results\": 30,   \"sources\": [{ \"type\": \"x\", \"post_favorite_count\": 10 }] } }}"
-            },
-            {
-              "name": "messages",
+              "name": "input",
               "value": "={{ [{ \"role\": \"user\", \"content\": $json.prompt }] }}"
+            },
+            {
+              "name": "tools",
+              "value": "={{ [{ \"type\": \"x_search\", \"from_date\": $json.startDate, \"to_date\": $json.endDate, \"allowed_x_handles\": [\"chukenDr\", \"jing1809t\", \"nagomi_SM\", \"lou_otoku\", \"yutai_yarou\", \"point_tanuki1\", \"tosu5580\", \"8coupon8\", \"kuponkoji\"], \"enable_image_understanding\": false, \"enable_video_understanding\": false }] }}"
             }
           ]
         },
@@ -76,7 +76,11 @@
           "parameters": [
             {
               "name": "x-api-key",
-              "value": "={{$env.N8N_API_KEY}}"
+              "value": "cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
             }
           ]
         },
@@ -93,7 +97,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// GetSentHistory(HTTP) のレスポンスを deal アイテム配列に展開\nconst body = $json;\n\nlet deals = body;\nif (body && Array.isArray(body.deals)) {\n  deals = body.deals;\n}\n\nif (!Array.isArray(deals)) {\n  console.log('⚠️ UnwrapRecentDeals: deals配列が見つからないため0件扱い');\n  deals = [];\n}\n\nreturn deals.map(d => ({ json: d }));\n"
+        "jsCode": "// GetSentHistory(HTTP) のレスポンスを deal アイテム配列に展開\nconst body = $json;\n\nlet deals = body;\nif (body && Array.isArray(body.deals)) {\n  deals = body.deals;\n}\n\nif (!Array.isArray(deals)) {\n  console.log('⚠️ UnwrapRecentDeals: deals配列が見つからないため0件扱い');\n  deals = [];\n}\n\n// n8nは0件だと後続ノードが実行されないため、履歴0件でもダミー1件を流す\nif (deals.length === 0) {\n  return [{ json: { __emptyHistory: true } }];\n}\n\nreturn deals.map(d => ({ json: d }));\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -191,7 +195,11 @@
             },
             {
               "name": "x-api-key",
-              "value": "={{$env.N8N_API_KEY}}"
+              "value": "cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ"
             }
           ]
         },
@@ -308,7 +316,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// 「今日から過去7日以内」の履歴だけを残す（重複チェック期間）\nconst sevenDaysAgo = new Date();\nsevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);\n\nreturn items.filter(item => {\n  const dateStr = item.json.date || item.json.created_at;\n  if (!dateStr) return false;\n\n  const itemDate = new Date(dateStr);\n  return itemDate >= sevenDaysAgo;\n});\n"
+        "jsCode": "// 「今日から過去7日以内」の履歴だけを残す（重複チェック期間）\n// n8nは0件だと後続ノードが実行されないため、履歴0件でもダミー1件を流す\nif (!items || items.length === 0) {\n  return [{ json: { __emptyHistory: true } }];\n}\n\nconst sevenDaysAgo = new Date();\nsevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);\n\nreturn items.filter(item => {\n  if (item.json && item.json.__emptyHistory) return true;\n\n  const dateStr = item.json.date || item.json.created_at;\n  if (!dateStr) return false;\n\n  const itemDate = new Date(dateStr);\n  return itemDate >= sevenDaysAgo;\n});\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
