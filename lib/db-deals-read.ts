@@ -43,7 +43,7 @@ export async function fetchDealsFromDb(pool: Pool, opts?: { includePrivate?: boo
   const { rows } = await pool.query(
     `
     SELECT
-      id, date, title, summary, detail, steps, service, expiration, conditions, notes,
+      id, date::text, title, summary, detail, steps, service, expiration::text, conditions, notes,
       category_main, category_sub, is_public, priority, discount_rate, discount_amount, score,
       created_at, updated_at, difficulty, area_type, target_user_type, usage_type, is_welkatsu, tags
     FROM deals
@@ -139,7 +139,7 @@ export async function fetchDealsFiltered(
     `
     WITH filtered AS (
       SELECT
-        id, date, title, summary, detail, steps, service, expiration, conditions, notes,
+        id, date::text, title, summary, detail, steps, service, expiration::text, conditions, notes,
         category_main, category_sub, is_public, priority, discount_rate, discount_amount, score,
         created_at, updated_at, difficulty, area_type, target_user_type, usage_type, is_welkatsu, tags,
         COUNT(*) OVER() AS _total
@@ -169,7 +169,7 @@ export async function fetchDealsByIdsFromDb(pool: Pool, ids: string[]): Promise<
   const { rows } = await pool.query(
     `
     SELECT
-      id, date, title, summary, detail, steps, service, expiration, conditions, notes,
+      id, date::text, title, summary, detail, steps, service, expiration::text, conditions, notes,
       category_main, category_sub, is_public, priority, discount_rate, discount_amount, score,
       created_at, updated_at, difficulty, area_type, target_user_type, usage_type, is_welkatsu, tags
     FROM deals
@@ -193,7 +193,7 @@ export async function fetchDealByIdFromDb(
   const { rows } = await pool.query(
     `
     SELECT
-      id, date, title, summary, detail, steps, service, expiration, conditions, notes,
+      id, date::text, title, summary, detail, steps, service, expiration::text, conditions, notes,
       category_main, category_sub, is_public, priority, discount_rate, discount_amount, score,
       created_at, updated_at, difficulty, area_type, target_user_type, usage_type, is_welkatsu, tags
     FROM deals
