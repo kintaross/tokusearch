@@ -158,7 +158,7 @@ export default async function HomePage({
               name="search"
               defaultValue={search}
               className="w-full h-16 md:h-24 pl-12 md:pl-20 pr-10 bg-white border-2 border-soft-greige rounded-[2rem] md:rounded-[2.5rem] text-base md:text-xl shadow-[0_20px_50px_-12px_rgba(92,82,72,0.08)] focus:ring-8 focus:ring-primary/5 focus:border-primary/20 transition-all placeholder:text-accent-brown/30" 
-              placeholder="お得なショップを探す" 
+              placeholder="お得情報を探す" 
               type="text"
             />
             <button type="submit" className="absolute right-2 md:right-4 top-2 md:top-4 bottom-2 md:bottom-4 px-6 md:px-10 bg-primary text-white text-sm md:text-base font-bold rounded-full hover:shadow-lg hover:shadow-primary/30 transition-all active:scale-95">
@@ -347,8 +347,8 @@ export default async function HomePage({
             <div className="text-[10px] md:text-xs text-white/50 font-bold tracking-[0.2em] uppercase">Free to Use</div>
           </div>
           <div className="space-y-2 md:space-y-3">
-            <div className="text-3xl md:text-5xl font-bold tracking-tight">Real</div>
-            <div className="text-[10px] md:text-xs text-white/50 font-bold tracking-[0.2em] uppercase">Time Updates</div>
+            <div className="text-3xl md:text-5xl font-bold tracking-tight">2<span className="text-primary">回</span></div>
+            <div className="text-[10px] md:text-xs text-white/50 font-bold tracking-[0.2em] uppercase">Updates / Day</div>
           </div>
         </div>
       </section>

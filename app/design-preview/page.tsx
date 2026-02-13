@@ -186,8 +186,8 @@ export default function DesignPreviewPage() {
                 <div className="text-xs text-white/50 font-bold tracking-[0.2em] uppercase">Free to Use</div>
               </div>
               <div className="space-y-3">
-                <div className="text-4xl lg:text-5xl font-bold tracking-tight">Real</div>
-                <div className="text-xs text-white/50 font-bold tracking-[0.2em] uppercase">Time Updates</div>
+                <div className="text-4xl lg:text-5xl font-bold tracking-tight">2<span className="text-primary">回</span></div>
+                <div className="text-xs text-white/50 font-bold tracking-[0.2em] uppercase">Updates / Day</div>
               </div>
             </div>
           </section>
