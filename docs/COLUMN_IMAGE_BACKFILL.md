@@ -124,7 +124,8 @@ deals-workflow と同じ方式です。
 
 ### セットアップ手順
 1. ワークフローJSONをインポート
-2. Vercel環境変数に `BLOB_READ_WRITE_TOKEN` を設定（画像保存先）
-3. `Schedule` ノードを **Active** にする（1日3回: 09:00 / 12:00 / 21:00）
-4. 追加の Credentials 設定は不要
+2. 画像保存は既存管理画面と同じ Google Drive を利用（`/api/admin/upload` と同方式）
+3. Vercel環境変数の Google Drive OAuth 設定を確認（`GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` / `GOOGLE_DRIVE_REFRESH_TOKEN`）
+4. `Schedule` ノードを **Active** にする（1日3回: 09:00 / 12:00 / 21:00）
+5. 追加の n8n Credentials 設定は不要
 
