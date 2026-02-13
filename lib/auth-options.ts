@@ -1,41 +1,10 @@
 import { NextAuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
-import { authenticateUser } from '@/lib/auth';
 import { getDbPool } from '@/lib/db';
 import { findOrCreateUserByGoogle } from '@/lib/db-users';
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    CredentialsProvider({
-      id: 'credentials',
-      name: 'Credentials',
-      credentials: {
-        username: { label: 'Username', type: 'text' },
-        password: { label: 'Password', type: 'password' },
-      },
-      async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) {
-          return null;
-        }
-
-        const user = await authenticateUser(
-          credentials.username,
-          credentials.password
-        );
-
-        if (user) {
-          return {
-            id: user.id,
-            name: user.display_name,
-            email: user.email,
-            role: user.role,
-          };
-        }
-
-        return null;
-      },
-    }),
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID ?? '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
@@ -50,7 +19,7 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
   },
   pages: {
-    signIn: '/login',
+    signIn: '/signin',
   },
   callbacks: {
     async signIn({ user, account, profile }) {

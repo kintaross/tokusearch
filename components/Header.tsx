@@ -65,10 +65,6 @@ export default function Header() {
                 ログアウト
               </button>
             </div>
-          ) : status !== 'loading' ? (
-            <Link href="/signin" className="px-6 py-2.5 bg-accent-brown text-white text-sm font-bold rounded-full hover:bg-accent-brown/90 transition-all">
-              ログイン
-            </Link>
           ) : null}
         </div>
 
@@ -133,14 +129,6 @@ export default function Header() {
                       ログアウト
                     </button>
                   </>
-                ) : status !== 'loading' ? (
-                  <Link 
-                    href="/signin" 
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full text-center px-6 py-3 bg-accent-brown text-white font-bold rounded-full hover:bg-accent-brown/90 transition-all"
-                  >
-                    ログイン
-                  </Link>
                 ) : null}
               </div>
 

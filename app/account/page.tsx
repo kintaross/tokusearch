@@ -73,10 +73,9 @@ export default function AccountPage() {
   if (status === 'unauthenticated') {
     return (
       <div className="max-w-6xl mx-auto px-4 py-12 text-center">
-        <p className="text-[#6b6f76] mb-4">ログインするとお気に入りや保存リストを同期できます。</p>
-        <Link href="/signin" className="text-brand-600 hover:underline font-medium">
-          ログイン（Google）
-        </Link>
+        <p className="text-[#6b6f76] mb-4">
+          現在、ログイン機能は準備中のためご利用いただけません。
+        </p>
       </div>
     );
   }

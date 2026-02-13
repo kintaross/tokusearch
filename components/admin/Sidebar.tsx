@@ -11,8 +11,8 @@ import {
   Settings,
   LogOut,
   X,
+  User,
 } from 'lucide-react';
-import { signOut } from 'next-auth/react';
 
 const menuItems = [
   {
@@ -29,6 +29,13 @@ const menuItems = [
     label: 'お得情報管理',
     href: '/admin/deals',
     icon: Tag,
+  },
+  {
+    label: 'ユーザー側ログイン（テスト）',
+    href: '/signin?callbackUrl=/account',
+    icon: User,
+    target: '_blank',
+    rel: 'noreferrer',
   },
 ];
 
@@ -54,7 +61,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, [isOpen]);
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/login' });
+    await fetch('/api/admin/auth/logout', { method: 'POST' }).catch(() => null);
+    window.location.href = '/login';
   };
 
   return (
@@ -105,6 +113,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               key={item.href}
               href={item.href}
               onClick={onClose}
+              target={'target' in item ? item.target : undefined}
+              rel={'rel' in item ? item.rel : undefined}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 isActive
                   ? 'bg-brand-600 text-white'

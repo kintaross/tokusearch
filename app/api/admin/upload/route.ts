@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
 import { google } from 'googleapis';
 import { Readable } from 'stream';
+import { ADMIN_SESSION_COOKIE, verifyAdminSessionValue } from '@/lib/admin-session';
 
 /**
  * Google Drive API v3 を使用した画像アップロード
@@ -146,8 +145,10 @@ async function getOrCreateFolder(
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.NEXTAUTH_SECRET || '';
+  const value = request.cookies.get(ADMIN_SESSION_COOKIE)?.value || '';
+  const session = verifyAdminSessionValue({ value, secret });
+  if (!session || (session.user.role !== 'admin' && session.user.role !== 'editor')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Lock } from 'lucide-react';
 
@@ -18,14 +17,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await signIn('credentials', {
-        username,
-        password,
-        redirect: false,
+      const r = await fetch('/api/admin/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
       });
 
-      if (result?.error) {
-        setError('ユーザー名またはパスワードが正しくありません');
+      if (!r.ok) {
+        const data = await r.json().catch(() => null);
+        setError(data?.error || 'ユーザー名またはパスワードが正しくありません');
       } else {
         router.push('/admin/dashboard');
       }

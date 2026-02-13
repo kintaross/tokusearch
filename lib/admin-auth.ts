@@ -1,6 +1,6 @@
-import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import { authOptions } from '@/lib/auth-options';
+import { cookies } from 'next/headers';
+import { ADMIN_SESSION_COOKIE, type AdminSession, verifyAdminSessionValue } from '@/lib/admin-session';
 
 const ADMIN_ROLES = ['admin', 'editor'] as const;
 
@@ -9,21 +9,24 @@ export function isAdminSession(session: { user?: { role?: string } } | null): bo
   return typeof role === 'string' && ADMIN_ROLES.includes(role as any);
 }
 
+function getSecret(): string {
+  return process.env.ADMIN_SESSION_SECRET || process.env.NEXTAUTH_SECRET || '';
+}
+
 export async function requireAuth() {
-  const session = await getServerSession(authOptions);
+  const secret = getSecret();
+  const value = cookies().get(ADMIN_SESSION_COOKIE)?.value || '';
+  const session: AdminSession | null = verifyAdminSessionValue({ value, secret });
 
-  if (!session) {
-    redirect('/login');
-  }
-
-  if (!isAdminSession(session)) {
-    redirect('/');
-  }
+  if (!session) redirect('/login');
+  if (!isAdminSession(session as any)) redirect('/');
 
   return session;
 }
 
 export async function getAdminSession() {
-  return await getServerSession(authOptions);
+  const secret = getSecret();
+  const value = cookies().get(ADMIN_SESSION_COOKIE)?.value || '';
+  return verifyAdminSessionValue({ value, secret });
 }
 

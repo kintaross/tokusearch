@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
 import {
   getColumnById,
   updateColumn,
   deleteColumn,
 } from '@/lib/columns';
+import { ADMIN_SESSION_COOKIE, verifyAdminSessionValue } from '@/lib/admin-session';
+
+function getAdminSessionFromRequest(request: NextRequest) {
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.NEXTAUTH_SECRET || '';
+  const value = request.cookies.get(ADMIN_SESSION_COOKIE)?.value || '';
+  return verifyAdminSessionValue({ value, secret });
+}
 
 // コラム取得
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  const session = getAdminSessionFromRequest(request);
+  if (!session || (session.user.role !== 'admin' && session.user.role !== 'editor')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -31,8 +36,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  const session = getAdminSessionFromRequest(request);
+  if (!session || (session.user.role !== 'admin' && session.user.role !== 'editor')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -65,8 +70,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  const session = getAdminSessionFromRequest(request);
+  if (!session || (session.user.role !== 'admin' && session.user.role !== 'editor')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
