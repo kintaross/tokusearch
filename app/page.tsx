@@ -7,6 +7,8 @@ import {
   getTodayNewDeals,
   isActiveNow,
   isKotsukotsuDeal,
+  getEndingSoonDeals,
+  calculateRemainingDays,
 } from '@/lib/home-utils';
 import { fetchColumnsFromSheet } from '@/lib/columns';
 import { Column } from '@/types/column';
@@ -36,6 +38,7 @@ export default async function HomePage({
   const allColumns = await fetchColumnsFromSheet({ status: 'published' });
   const todayNewDealsAll = getTodayNewDeals(allDeals, 0);
   const activeCount = allDeals.filter(deal => deal.is_public && isActiveNow(deal.expiration)).length;
+  const endingSoonDeals = getEndingSoonDeals(allDeals);
   
   // 検索パラメータの取得
   const search = typeof searchParams.search === 'string' ? searchParams.search : '';
@@ -254,6 +257,63 @@ export default async function HomePage({
           </div>
         )}
       </section>
+
+      {/* 終了間近のお得情報セクション */}
+      {!isFiltered && endingSoonDeals.length > 0 && (
+        <section className="bg-soft-greige/30 py-12 md:py-24">
+          <div className="max-w-7xl mx-auto px-4 md:px-8">
+            <div className="flex items-end justify-between mb-8 md:mb-12">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold text-accent-brown mb-2 tracking-tight">もうすぐ終了</h2>
+                <p className="text-sm md:text-base text-accent-brown/50">見逃し厳禁！終了間近の注目オファー</p>
+              </div>
+              <Link href="/?filter=ending" className="text-primary font-bold flex items-center gap-1 md:gap-2 hover:gap-3 transition-all pb-1 border-b-2 border-primary/20 hover:border-primary text-sm md:text-base whitespace-nowrap ml-4">
+                すべて見る <span className="material-symbols-outlined text-base md:text-lg">arrow_forward</span>
+              </Link>
+            </div>
+
+            <div className="flex overflow-x-auto pb-4 gap-4 md:gap-8 snap-x -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
+              {endingSoonDeals.map((deal) => (
+                <Link key={deal.id} href={`/deals/${deal.id}`} className="min-w-[280px] w-[85%] md:w-[350px] flex-shrink-0 snap-center bg-white border border-soft-greige rounded-2xl md:rounded-3xl p-6 flex flex-col gap-4 group hover:shadow-lg transition-all relative overflow-hidden">
+                  {/* 残り日数バッジ */}
+                  <div className="absolute top-0 right-0 bg-primary/10 text-primary px-4 py-1.5 rounded-bl-2xl font-bold text-xs md:text-sm tracking-wider z-10">
+                    {calculateRemainingDays(deal.expiration)}
+                  </div>
+
+                  <div className="flex items-start gap-4 mt-2">
+                    <div className="w-14 h-14 rounded-xl bg-warm-cream flex items-center justify-center border border-soft-greige shrink-0">
+                      <span className="material-symbols-outlined text-2xl text-primary">
+                        {deal.category_main?.includes('ドラッグ') ? 'medication' : 
+                         deal.category_main?.includes('スーパー') ? 'local_mall' : 
+                         deal.category_main?.includes('グルメ') ? 'restaurant_menu' : 'shopping_basket'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] text-accent-brown/40 font-bold uppercase tracking-wider">{deal.category_main}</span>
+                      </div>
+                      <h3 className="font-bold text-lg text-accent-brown group-hover:text-primary transition-colors line-clamp-2 leading-tight mb-1">{deal.title}</h3>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-end justify-between border-t border-soft-greige/30 pt-4 mt-auto">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-accent-brown/40 font-bold tracking-widest">RETURN</span>
+                      <div className="flex items-baseline">
+                         <span className="text-2xl font-bold text-primary">{deal.discount_rate || '??'}</span>
+                         <span className="text-sm text-primary font-bold ml-0.5">%</span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-accent-brown/40 flex items-center gap-1">
+                      <span>期限: {deal.expiration}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* コラムセクション */}
       <section className="bg-warm-cream py-12 md:py-24">
