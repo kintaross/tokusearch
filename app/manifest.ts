@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'お得な商品が見つかる検索アプリ',
     start_url: '/',
     display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#ffffff',
+    background_color: '#D48166',
+    theme_color: '#D48166',
     icons: [
       {
         src: '/icon-512.png',

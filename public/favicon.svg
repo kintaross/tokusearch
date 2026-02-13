@@ -1,27 +1,21 @@
 <svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- 背景 - クリーンホワイト -->
-  <rect width="256" height="256" rx="48" fill="#ffffff"/>
+  <rect width="256" height="256" rx="64" fill="#D48166"/>
   
-  <!-- Toku（1段目） -->
-  <text 
-    x="128" 
-    y="120" 
-    font-family="'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif" 
-    font-size="68" 
-    font-weight="700" 
-    fill="#0f1419" 
-    text-anchor="middle" 
-    letter-spacing="-2.4">Toku</text>
-  
-  <!-- Search（2段目） -->
-  <text 
-    x="128" 
-    y="188" 
-    font-family="'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif" 
-    font-size="68" 
-    font-weight="700" 
-    fill="#0f1419" 
-    text-anchor="middle" 
-    letter-spacing="-2.4">Search</text>
-</svg>
+  <!-- Icon (shifted up) -->
+  <g transform="translate(0, -20)">
+    <path d="M128 48L144 96L192 112L144 128L128 176L112 128L64 112L112 96L128 48Z" fill="white"/>
+    <path d="M192 32L200 56L224 64L200 72L192 96L184 72L160 64L184 56L192 32Z" fill="white"/>
+    <path d="M64 176L72 200L96 208L72 216L64 240L56 216L32 208L56 200L64 176Z" fill="white"/>
+  </g>
 
+  <!-- Text -->
+  <text 
+    x="128" 
+    y="210" 
+    font-family="'Quicksand', 'Noto Sans JP', sans-serif" 
+    font-size="36" 
+    font-weight="700" 
+    fill="white" 
+    text-anchor="middle" 
+    letter-spacing="0.5">TokuSearch</text>
+</svg>
