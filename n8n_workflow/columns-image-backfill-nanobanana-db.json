@@ -130,7 +130,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  image: $json.base64,\n  filename: $json.kind + '-' + $json.columnId + '-' + Date.now() + '.png'\n} }}",
+        "jsonBody": "={{ {\n  image: $json.base64,\n  filename: $json.kind + '-' + $json.columnId + '-' + Date.now() + '.png',\n  meta: {\n    kind: $json.kind,\n    columnId: $json.columnId,\n    description: $json.description\n  }\n} }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -141,7 +141,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// アップロード結果のURLと元のジョブ情報を結合して apply 用ペイロードを作る\n// $json はアップロードAPIのレスポンス（{ success, url, filename }）\n// Base64抽出ノードの出力からジョブ情報を取得\nconst uploadResult = $json;\nconst job = $('Base64抽出').first().json;\n\nconst url = uploadResult.url || '';\nconst kind = job.kind || '';\nconst columnId = job.columnId || '';\nconst description = job.description || '';\n\n// 種類に応じて apply API のペイロードを構築\nvar payload = {};\nif (kind === 'thumbnail') {\n  payload = {\n    column_id: columnId,\n    thumbnail_url: url,\n    inline_images: []\n  };\n} else {\n  // inline\n  payload = {\n    column_id: columnId,\n    thumbnail_url: '',\n    inline_images: [{ description: description, url: url }]\n  };\n}\n\nreturn [{ json: payload }];"
+        "jsCode": "// アップロード結果から apply 用ペイロードを作る\n// 優先: upload-image API が返す meta\n// 互換: meta がない環境は Base64抽出 の current item を参照\nconst uploadResult = $json;\nlet meta = uploadResult.meta || null;\n\nif (!meta) {\n  try {\n    meta = $('Base64抽出').item.json;\n  } catch (e) {\n    meta = null;\n  }\n}\n\nconst url = uploadResult.url || '';\nconst kind = (meta && meta.kind) || '';\nconst columnId = (meta && meta.columnId) || '';\nconst description = (meta && meta.description) || '';\n\nif (!url || !columnId || !kind) {\n  throw new Error('upload結果に必要な情報が不足しています（url/kind/columnId）');\n}\n\n// 種類に応じて apply API のペイロードを構築\nlet payload = {};\nif (kind === 'thumbnail') {\n  payload = {\n    column_id: columnId,\n    thumbnail_url: url,\n    inline_images: []\n  };\n} else {\n  payload = {\n    column_id: columnId,\n    thumbnail_url: '',\n    inline_images: [{ description: description, url: url }]\n  };\n}\n\nreturn [{ json: payload }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -179,12 +179,12 @@
     "次のコラム取得（API）": { "main": [[{ "node": "対象あり？", "type": "main", "index": 0 }]] },
     "対象あり？": { "main": [[{ "node": "画像ジョブ作成", "type": "main", "index": 0 }], []] },
     "画像ジョブ作成": { "main": [[{ "node": "1枚ずつ処理", "type": "main", "index": 0 }]] },
-    "1枚ずつ処理": { "main": [[{ "node": "Nano Banana Pro 生成", "type": "main", "index": 0 }], []] },
+    "1枚ずつ処理": { "main": [[], [{ "node": "Nano Banana Pro 生成", "type": "main", "index": 0 }]] },
     "Nano Banana Pro 生成": { "main": [[{ "node": "Base64抽出", "type": "main", "index": 0 }]] },
     "Base64抽出": { "main": [[{ "node": "画像アップロード", "type": "main", "index": 0 }]] },
     "画像アップロード": { "main": [[{ "node": "DB反映ペイロード作成", "type": "main", "index": 0 }]] },
     "DB反映ペイロード作成": { "main": [[{ "node": "DB反映（API）", "type": "main", "index": 0 }]] },
-    "DB反映（API）": { "main": [[{ "node": "1枚ずつ処理", "type": "main", "index": 0 }]] }
+    "DB反映（API）": { "main": [[{ "node": "1枚ずつ処理", "type": "main", "index": 1 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "pinData": {},

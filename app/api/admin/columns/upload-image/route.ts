@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { image, filename } = body;
+    const { image, filename, meta } = body;
 
     if (!image || !filename) {
       return NextResponse.json(
@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       success: true,
       url,
       filename,
+      meta: meta ?? null,
     });
   } catch (error: any) {
     console.error('画像アップロードエラー:', error);
