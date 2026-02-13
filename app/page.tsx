@@ -11,6 +11,7 @@ import {
   getCategoryCount,
   isActiveNow,
   calculateRemainingDays,
+  isKotsukotsuDeal,
 } from '@/lib/home-utils';
 import { fetchColumnsFromSheet } from '@/lib/columns';
 import { Column } from '@/types/column';
@@ -99,7 +100,8 @@ export default async function HomePage({
   
   // 通常表示用データ
   const displayDeals = isFiltered ? filteredDeals : getMustCheckDeals(allDeals);
-  const todayNewDeals = isFiltered ? [] : getTodayNewDeals(allDeals);
+  // 新着はコツコツ系を除外（コツコツは /kotsukotsu で表示）
+  const todayNewDeals = isFiltered ? [] : getTodayNewDeals(allDeals).filter((d) => !isKotsukotsuDeal(d));
 
   const sectionTitle = isFiltered 
     ? (search ? `「${search}」の検索結果` : filter ? '絞り込み結果' : '検索結果')
