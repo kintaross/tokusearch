@@ -6,6 +6,7 @@ import {
   createColumn,
   generateSlug,
 } from '@/lib/columns';
+import { autoInsertImageMarkers } from '@/lib/column-image-markers';
 
 // コラム一覧取得
 export async function GET(request: NextRequest) {
@@ -53,8 +54,17 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // [IMAGE:] マーカーが無い記事には自動挿入
+    // → 画像バックフィルワークフローがマーカーを検知して画像を生成する
+    let content_markdown: string = body.content_markdown || '';
+    const autoMarkers = autoInsertImageMarkers(content_markdown);
+    if (autoMarkers.inserted > 0) {
+      content_markdown = autoMarkers.content_markdown;
+      console.log(`📸 [IMAGE:] マーカーを ${autoMarkers.inserted} 箇所自動挿入しました`);
+    }
+
     // マークダウンをHTMLに変換（簡易版、実際にはライブラリ使用推奨）
-    const content_html = body.content_markdown || '';
+    const content_html = content_markdown;
 
     const slug = body.slug || generateSlug(body.title);
 
@@ -62,7 +72,7 @@ export async function POST(request: NextRequest) {
       slug,
       title: body.title || '',
       description: body.description || '',
-      content_markdown: body.content_markdown || '',
+      content_markdown,
       content_html,
       category: body.category || 'その他',
       tags: body.tags || '',

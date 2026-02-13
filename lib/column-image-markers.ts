@@ -201,6 +201,87 @@ export function buildInlinePrompt(input: {
     .join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// Auto-insert [IMAGE: ...] markers for articles that don't have any
+// ---------------------------------------------------------------------------
+
+function stripInlineFormatting(s: string): string {
+  return String(s ?? '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Analyse h2 headings and auto-insert `[IMAGE: ...]` markers into markdown
+ * that does not already contain any.
+ *
+ * Designed to be called from the `next` API so the existing apply flow
+ * (marker → `![desc](url)` replacement) works unchanged.
+ */
+export function autoInsertImageMarkers(
+  markdown: string,
+  options?: { maxMarkers?: number },
+): { content_markdown: string; inserted: number } {
+  const md = String(markdown ?? '');
+  const maxMarkers = options?.maxMarkers ?? 4;
+
+  // Already has [IMAGE:] markers — nothing to do.
+  if (/\[IMAGE:\s*[^\]]+?\s*\]/.test(md)) {
+    return { content_markdown: md, inserted: 0 };
+  }
+
+  // Already has 2+ inline images — article was already processed.
+  const existingInlineImages = (md.match(/!\[.*?\]\(https?:\/\/[^\)]+\)/g) || []).length;
+  if (existingInlineImages >= 2) {
+    return { content_markdown: md, inserted: 0 };
+  }
+
+  // Collect h2 headings
+  const h2Re = /^##\s+(.+)$/gm;
+  const headings: { text: string; endIndex: number }[] = [];
+  for (const m of md.matchAll(h2Re)) {
+    if (typeof m.index === 'number') {
+      headings.push({
+        text: stripInlineFormatting(m[1]),
+        endIndex: m.index + m[0].length,
+      });
+    }
+  }
+
+  if (headings.length === 0) {
+    return { content_markdown: md, inserted: 0 };
+  }
+
+  // Filter out conclusion / intro headings — we want the "meaty" sections
+  const skipRe = /^(まとめ|おわりに|最後に|結論|はじめに|導入$)/;
+  let candidates = headings.filter((h) => !skipRe.test(h.text));
+  if (candidates.length === 0) {
+    // Fallback: everything except the last heading (assumed to be conclusion)
+    candidates = headings.length > 1 ? headings.slice(0, -1) : headings;
+  }
+
+  const selected = candidates.slice(0, maxMarkers);
+
+  let result = md;
+  let offset = 0;
+  let inserted = 0;
+
+  for (const heading of selected) {
+    const desc = `${heading.text}を解説するイメージ図`;
+    const marker = `\n\n[IMAGE: ${desc}]`;
+    const pos = heading.endIndex + offset;
+    result = result.slice(0, pos) + marker + result.slice(pos);
+    offset += marker.length;
+    inserted++;
+  }
+
+  return { content_markdown: result, inserted };
+}
+
+// ---------------------------------------------------------------------------
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

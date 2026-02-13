@@ -3,6 +3,7 @@ import { getDbPool } from '@/lib/db';
 import { isIngestAuthorized } from '@/lib/ingest-auth';
 import {
   extractImageMarkers,
+  autoInsertImageMarkers,
   needsThumbnail,
   buildThumbnailPrompt,
   buildInlinePrompt,
@@ -66,6 +67,11 @@ export async function GET(request: NextRequest) {
         AND (
           thumbnail_url IS NULL OR btrim(thumbnail_url) = '' OR thumbnail_url LIKE '%placehold.co%'
           OR content_markdown LIKE '%[IMAGE:%'
+          OR (
+            content_markdown IS NOT NULL
+            AND btrim(content_markdown) <> ''
+            AND content_markdown NOT LIKE '%![%](http%'
+          )
         )
       ORDER BY COALESCE(published_at, created_at) DESC NULLS LAST
       LIMIT $1
@@ -73,9 +79,27 @@ export async function GET(request: NextRequest) {
       [limit]
     );
 
-    const items = rows.map((r) => {
-      const content_markdown = String(r.content_markdown ?? '');
-      const markersAll = extractImageMarkers(content_markdown, { maxMarkers: 50, contextSpanChars: 260 });
+    const items = await Promise.all(rows.map(async (r) => {
+      let content_markdown = String(r.content_markdown ?? '');
+      let markersAll = extractImageMarkers(content_markdown, { maxMarkers: 50, contextSpanChars: 260 });
+
+      // ----- Auto-insert markers for articles that don't have [IMAGE:] -----
+      // This enables inline-image generation for older articles whose
+      // generation prompt did not include the marker instruction, or where
+      // Gemini simply omitted them.
+      if (markersAll.length === 0) {
+        const auto = autoInsertImageMarkers(content_markdown, { maxMarkers: maxInlinePerArticle });
+        if (auto.inserted > 0) {
+          await pool.query(
+            'UPDATE columns SET content_markdown = $1, updated_at = NOW() WHERE id = $2',
+            [auto.content_markdown, r.id],
+          );
+          content_markdown = auto.content_markdown;
+          markersAll = extractImageMarkers(content_markdown, { maxMarkers: 50, contextSpanChars: 260 });
+        }
+      }
+      // -------------------------------------------------------------------
+
       const markers = markersAll.slice(0, maxInlinePerArticle);
 
       const thumbnailNeeded = needsThumbnail(r.thumbnail_url);
@@ -113,7 +137,7 @@ export async function GET(request: NextRequest) {
           items: inline,
         },
       };
-    });
+    }));
 
     return NextResponse.json({ success: true, count: items.length, items });
   } catch (error: any) {

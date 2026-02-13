@@ -60,3 +60,6 @@ Thumbs.db
 
 # debug outputs
 /debug/
+
+# n8n local/private workflow variants (contains literals/keys)
+/n8n_workflow/columns-image-backfill-nanobanana-db.json

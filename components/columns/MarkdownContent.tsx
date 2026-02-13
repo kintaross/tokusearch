@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { ImageIcon } from 'lucide-react';
+import { ColumnImage } from './ColumnImage';
 
 type Heading = {
   id: string;
@@ -39,6 +40,18 @@ export function MarkdownContent({ content, headings }: Props) {
             const id = heading?.id || `section-${currentIndex}`;
             
             return <h2 id={id} {...props}>{children}</h2>;
+          },
+          img: ({ src, alt }) => {
+            if (src) {
+              return (
+                <ColumnImage
+                  src={src}
+                  alt={alt || ''}
+                  className="w-full rounded-lg my-6"
+                />
+              );
+            }
+            return null;
           },
           p: ({ children, ...props }) => {
             // 段落内に[IMAGE: xxx]があるかチェック
