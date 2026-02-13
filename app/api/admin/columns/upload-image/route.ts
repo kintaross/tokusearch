@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { Readable } from 'stream';
 
+function cleanEnvValue(value: string | undefined): string {
+  return String(value ?? '')
+    .trim()
+    .replace(/\\r\\n|\\n|\\r/g, '')
+    .replace(/[\r\n]+$/g, '');
+}
+
 function parseDataUrl(input: string): { mimeType: string; base64Data: string } {
   const s = String(input ?? '');
   const m = s.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
@@ -15,12 +22,14 @@ function sanitizeFilename(name: string): string {
 }
 
 async function getGoogleDriveClientWithOAuth() {
-  const clientId = process.env.GOOGLE_DRIVE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
-  const refreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
+  const clientId = cleanEnvValue(process.env.GOOGLE_DRIVE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID);
+  const clientSecret = cleanEnvValue(process.env.GOOGLE_DRIVE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET);
+  const refreshToken = cleanEnvValue(process.env.GOOGLE_DRIVE_REFRESH_TOKEN);
   const redirectUri =
-    process.env.GOOGLE_DRIVE_REDIRECT_URI ||
-    (process.env.NEXTAUTH_URL ? `${process.env.NEXTAUTH_URL}/api/auth/callback/google` : 'http://localhost:3000/oauth2callback');
+    cleanEnvValue(process.env.GOOGLE_DRIVE_REDIRECT_URI) ||
+    (cleanEnvValue(process.env.NEXTAUTH_URL)
+      ? `${cleanEnvValue(process.env.NEXTAUTH_URL)}/api/auth/callback/google`
+      : 'http://localhost:3000/oauth2callback');
 
   if (!clientId || !clientSecret || !refreshToken) {
     throw new Error(
