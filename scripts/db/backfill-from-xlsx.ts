@@ -17,8 +17,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import dotenv from 'dotenv';
 import XLSX from 'xlsx';
 import { Client } from 'pg';
+
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+dotenv.config();
 
 type AnyRow = Record<string, any>;
 
@@ -130,6 +134,39 @@ function sheetToObjects(wb: XLSX.WorkBook, sheetName: string): AnyRow[] {
       obj[key] = row[j] ?? null;
     }
     out.push(obj);
+  }
+  return out;
+}
+
+/** columns シート用: ヘッダーが "id" 重複でも列位置で id/slug/title を正しく読む */
+function sheetToColumnRows(wb: XLSX.WorkBook): AnyRow[] {
+  const ws = wb.Sheets['columns'];
+  if (!ws) return [];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true }) as any[][];
+  if (rows.length < 2) return [];
+  const out: AnyRow[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.every((c) => c === null || c === '')) continue;
+    out.push({
+      __rowNumber: i + 1,
+      id: row[0] ?? null,
+      slug: row[1] ?? null,
+      title: row[2] ?? null,
+      description: row[3] ?? null,
+      content_markdown: row[4] ?? null,
+      content_html: row[5] ?? null,
+      category: row[6] ?? null,
+      tags: row[7] ?? null,
+      thumbnail_url: row[8] ?? null,
+      author: row[9] ?? null,
+      status: row[10] ?? null,
+      is_featured: row[11] ?? null,
+      view_count: row[12] ?? null,
+      created_at: row[13] ?? null,
+      updated_at: row[14] ?? null,
+      published_at: row[15] ?? null,
+    });
   }
   return out;
 }
@@ -360,7 +397,7 @@ async function main() {
   {
     let rows: AnyRow[] = [];
     try {
-      rows = sheetToObjects(wb, 'columns');
+      rows = sheetToColumnRows(wb);
     } catch (e) {
       console.log('⚠️ columns sheet not found, skip');
       rows = [];
@@ -391,8 +428,8 @@ async function main() {
           $7,$8,$9,$10,$11,$12,$13,
           $14,$15,$16
         )
-        ON CONFLICT (id) DO UPDATE SET
-          slug = EXCLUDED.slug,
+        ON CONFLICT (slug) DO UPDATE SET
+          id = EXCLUDED.id,
           title = EXCLUDED.title,
           description = EXCLUDED.description,
           content_markdown = EXCLUDED.content_markdown,

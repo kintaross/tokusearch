@@ -18,7 +18,8 @@
     "column:import-themes": "node scripts/import-themes.js",
     "drive:setup-oauth": "node scripts/setup-google-drive-oauth.js",
     "drive:get-token": "node scripts/get-google-drive-refresh-token.js",
-    "setup:n8n": "node scripts/add-n8n-webhook-env.js"
+    "setup:n8n": "node scripts/add-n8n-webhook-env.js",
+    "db:backfill": "ts-node scripts/db/backfill-from-xlsx.ts --file=TokuSearch.xlsx"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

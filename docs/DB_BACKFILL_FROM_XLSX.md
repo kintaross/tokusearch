@@ -9,7 +9,8 @@
 
 - Node.js（本リポジトリと同じバージョン帯）
 - Postgres（Vercel Postgres / Supabase / Neon 等）
-- 環境変数 `DATABASE_URL`（または `POSTGRES_URL`）が設定済み
+- 環境変数 `DATABASE_URL`（または `POSTGRES_URL`）が設定済み  
+  - スクリプトは起動時に `.env.local` および `.env` を自動読み込みします。ここに `DATABASE_URL` を書いておけば、コマンドラインで指定する必要はありません。
 
 ---
 
@@ -26,14 +27,17 @@
 
 ---
 
-## 2) バックフィル実行（deals / admin_users）
+## 2) バックフィル実行（deals / admin_users / columns / column_themes / column_requests）
 
 プロジェクトルートで:
 
 ```powershell
-$env:DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DBNAME"
+# .env.local に DATABASE_URL が無い場合のみ、ここで指定
+# $env:DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DBNAME"
 npx ts-node scripts/db/backfill-from-xlsx.ts --file=TokuSearch.xlsx
 ```
+
+- **移行対象**: `database`（deals）・`admin_users`・**`columns`（コラム）**・`column_themes`・`column_requests` の各シート（xlsx にシートが存在するものだけ投入）
 
 成功すると、以下が作成されます。
 
