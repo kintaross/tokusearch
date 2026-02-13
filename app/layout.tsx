@@ -1,8 +1,7 @@
-import type { Metadata } from 'next'
-import Link from 'next/link'
+import type { ReactNode } from 'react'
 import { ViewModeProvider } from '@/contexts/ViewModeContext'
-import Header from '@/components/Header'
 import Providers from '@/components/Providers'
+import SiteChrome from '@/components/SiteChrome'
 import { WebsiteStructuredData, OrganizationStructuredData } from '@/components/StructuredData'
 import { metadata } from './metadata'
 import './globals.css'
@@ -12,7 +11,7 @@ export { metadata }
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <html lang="ja">
@@ -27,10 +26,7 @@ export default function RootLayout({
       <body className="antialiased font-sans text-accent-brown bg-background-light">
         <Providers>
         <ViewModeProvider>
-          <Header />
-          <main className="min-h-screen">
-            {children}
-          </main>
+          <SiteChrome>{children}</SiteChrome>
         </ViewModeProvider>
         </Providers>
       </body>
