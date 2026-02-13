@@ -126,3 +126,15 @@ n8n（特にCloud環境）では、式内の `{{$env.VAR_NAME}}` 参照がセキ
 本リポジトリの雛形ワークフロー（`n8n_workflow/columns-image-backfill-nanobanana-db.json`）は、
 **Credentials参照**で動くようにしてあります（`PLEASE_CREATE_...` を作成して割り当ててください）。
 
+### すぐ使える最小手順（Credentials）
+1. n8n → **Credentials** → **Create new** → **Header Auth**
+2. 以下を作成:
+   - **Name**: `N8N API Key Auth`
+     - Header Name: `x-api-key`
+     - Header Value: （Vercelに設定している `N8N_API_KEY` と同じ値）
+   - **Name**: `Gemini Header Auth`
+     - Header Name: `x-goog-api-key`
+     - Header Value: （Gemini API Key）
+3. ワークフローを再読み込みして、赤い認証エラーのノードに上記Credentialsを割り当て
+4. `Schedule` ノードを **Active** にする（1日3回）
+

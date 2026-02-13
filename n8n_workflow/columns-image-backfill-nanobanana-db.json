@@ -118,7 +118,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// candidates[0].content.parts から inlineData.data(base64) を拾う\nconst resp = $json;\nconst parts = resp?.candidates?.[0]?.content?.parts || [];\nconst imgPart = parts.find(p => p && p.inlineData && p.inlineData.data);\nif (!imgPart) {\n  throw new Error('inlineData.data が見つかりません。レスポンス構造を確認してください。');\n}\n\nconst base64 = imgPart.inlineData.data;\nconst mimeType = imgPart.inlineData.mimeType || 'image/png';\n\n// 元ジョブ（Split in Batchesの現在item）\nconst job = $('1枚ずつ処理').item.json;\n\nreturn [{ json: { ...job, base64, mimeType } }];"
+        "jsCode": "// candidates[0].content.parts から inlineData.data(base64) を拾う\nconst resp = $json;\nconst parts = resp?.candidates?.[0]?.content?.parts || [];\nconst imgPart = parts.find(p => p && p.inlineData && p.inlineData.data);\nif (!imgPart) {\n  throw new Error('inlineData.data が見つかりません。レスポンス構造を確認してください。');\n}\n\nconst base64 = imgPart.inlineData.data;\nconst mimeType = imgPart.inlineData.mimeType || 'image/png';\n\n// 直前ノード（Split in Batches）から流れてきたジョブ\nconst job = $input.item.json;\n\nreturn [{ json: { ...job, base64, mimeType } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -140,7 +140,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  image: $json.base64,\n  filename: `${$json.kind}-${$json.columnId}-${Date.now()}.png`\n} }}",
+        "jsonBody": "={{ {\n  image: $json.base64,\n  filename: ($json.kind + '-' + $json.columnId + '-' + Date.now() + '.png')\n} }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
