@@ -18,7 +18,7 @@
 - n8n が稼働していること（Cloud / セルフホストどちらでも可）
 - **xAi (Grok) API** の認証情報が n8n に登録済みであること（既存「お得情報自動収集」ワークフローと同じ xAi アカウントで可）
 - TokuSearch 本番（または検証）の **Ingest API** が利用可能であること
-- 環境変数 **`N8N_API_KEY`** が n8n と Vercel（またはアプリの環境）で **同一値** に設定されていること
+- Ingest API 用の API キーは、**deals-workflow-db-ingest.json と同じリテラル値**をワークフロー内に記載しています（n8n の環境変数は使わない前提）。
 
 ## インポート手順
 
@@ -27,17 +27,12 @@
 3. `n8n_workflow/kotsukotsu-workflow-db-ingest.json` をアップロード
 4. ワークフローが開いたら、以下を確認・設定する
 
-### 認証・環境変数
+### 認証・設定
 
 - **CallGrokAI** ノード: **Credentials** で xAi API を選択（既存の「xAi account」など）
-- **GetRecentDeals** / **PostIngestDeals** ノード: URL は `https://tokusearch.vercel.app` のまま、または自ドメインに変更。  
-  **ヘッダー** の `x-api-key` と `Authorization` は `{{ $env.N8N_API_KEY }}` を参照しているため、n8n の **環境変数** に `N8N_API_KEY` を設定する。
-
-#### n8n で N8N_API_KEY を設定する場合
-
-- **Settings**（歯車）→ **Variables** または **Environment variables**
-- **Add variable**: Key = `N8N_API_KEY`, Value = （Vercel などに設定したのと同じ値）
-- 保存後、ワークフローを再実行して動作確認
+- **GetRecentDeals** / **PostIngestDeals** ノード:  
+  - URL は `https://tokusearch.vercel.app` のまま、または自ドメインに変更  
+  - **x-api-key** と **Authorization** は、deals-workflow と同様に **JSON 内にリテラルで記載**済み。キーをローテーションした場合は、このワークフローと `deals-workflow-db-ingest.json` の両方の該当箇所を同じ値に更新すること
 
 ## ノード構成（流れ）
 
