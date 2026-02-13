@@ -23,6 +23,9 @@ export const metadata: Metadata = {
   description: '今日チェックすべきお得情報を10秒で把握。マストチェック、締切間近、新着情報を一目で確認できる日次ダッシュボード。',
 };
 
+// 一旦「新着のお得」セクションは非表示（要望により暫定対応）
+const SHOW_NEW_DEALS_SECTION = false;
+
 const CATEGORIES: { id: CategoryMain; icon: string; label: string }[] = [
   { id: 'ドラッグストア・日用品', icon: 'medication', label: '日用品' },
   { id: 'スーパー・量販店・EC', icon: 'local_mall', label: 'スーパー・EC' },
@@ -190,7 +193,7 @@ export default async function HomePage({
       </section>
 
       {/* 新着のお得（24時間以内） */}
-      {!isFiltered && todayNewDeals.length > 0 && (
+      {SHOW_NEW_DEALS_SECTION && !isFiltered && todayNewDeals.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 border-b border-soft-greige/50">
           <div className="flex items-center gap-3 mb-6 md:mb-8">
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
