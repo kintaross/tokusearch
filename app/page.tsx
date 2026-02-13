@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Metadata } from 'next';
 import { fetchDealsForPublic } from '@/lib/deals-data';
 import { CategoryMain } from '@/types/deal';
@@ -14,7 +15,7 @@ import {
 import { fetchColumnsFromSheet } from '@/lib/columns';
 import { Column } from '@/types/column';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: 'TokuSearch | 賢い選択、豊かな暮らし',
@@ -302,14 +303,18 @@ export default async function HomePage({
           <div className="flex overflow-x-auto pb-4 gap-4 md:grid md:grid-cols-3 md:gap-10 md:overflow-visible snap-x md:snap-none -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
             {displayColumns.map((column) => (
               <Link key={column.id} href={`/columns/${column.slug}`} className="min-w-[280px] w-[85%] md:w-auto flex-shrink-0 snap-center group cursor-pointer">
-                <div className="aspect-[4/3] rounded-2xl md:rounded-[2rem] mb-4 md:mb-6 overflow-hidden bg-white shadow-sm">
+                <div className="aspect-[4/3] rounded-2xl md:rounded-[2rem] mb-4 md:mb-6 overflow-hidden bg-white shadow-sm relative">
                   {column.thumbnail_url ? (
-                    <img 
-                      alt={column.title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" 
-                      src={column.thumbnail_url.includes('drive.google.com') 
-                        ? `/api/image-proxy?url=${encodeURIComponent(column.thumbnail_url)}`
-                        : column.thumbnail_url}
+                    <Image
+                      alt={column.title}
+                      className="object-cover group-hover:scale-105 transition-transform duration-1000"
+                      src={
+                        column.thumbnail_url.includes('drive.google.com')
+                          ? `/api/image-proxy?url=${encodeURIComponent(column.thumbnail_url)}`
+                          : column.thumbnail_url
+                      }
+                      fill
+                      sizes="(max-width: 768px) 85vw, 400px"
                     />
                   ) : (
                     <div className="w-full h-full bg-soft-greige flex items-center justify-center text-accent-brown/20">

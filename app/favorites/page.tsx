@@ -39,11 +39,10 @@ export default function FavoritesPage() {
           return;
         }
 
-        const response = await fetch('/api/deals');
+        const response = await fetch(`/api/deals/batch?ids=${encodeURIComponent(favoriteIds.join(','))}`);
         const data = await response.json();
-        const byId = new Map((data.deals ?? []).map((d: Deal) => [d.id, d]));
-        const filtered = favoriteIds.map((id) => byId.get(id)).filter(Boolean) as Deal[];
-        setFavoriteDeals(filtered);
+        const deals = (data.deals ?? []) as Deal[];
+        setFavoriteDeals(deals);
       } catch (error) {
         console.error('お気に入りの読み込みエラー:', error);
       } finally {

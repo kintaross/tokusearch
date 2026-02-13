@@ -146,9 +146,7 @@ export async function fetchDealsFromSheet(opts?: { includePrivate?: boolean }): 
   const apiKey = process.env.GOOGLE_SHEETS_API_KEY;
   const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
 
-  // 開発環境で環境変数が設定されていない場合はモックデータを返す
   if (!spreadsheetId || (!apiKey && !serviceAccountKey)) {
-    console.warn('⚠️ 環境変数が設定されていません。モックデータを使用します。');
     return generateMockData();
   }
 
@@ -181,25 +179,17 @@ export async function fetchDealsFromSheet(opts?: { includePrivate?: boolean }): 
     });
 
     const rows = response.data.values;
-    console.log(`📊 データ取得成功: ${rows?.length ?? 0}行`);
-
     if (!rows || rows.length === 0) {
       return [];
     }
 
-    // ヘッダー行を取得
     const headers = rows[0] as string[];
-    console.log('📋 ヘッダー:', headers);
-    
-    // ヘッダーのインデックスをマッピング
     const headerMap: Record<string, number> = {};
     headers.forEach((header, index) => {
       if (header && typeof header === 'string') {
         headerMap[header.toLowerCase().trim()] = index;
       }
     });
-    
-    console.log('📋 ヘッダーマップ:', JSON.stringify(headerMap));
 
     // データ行をDealオブジェクトに変換
     const deals: Deal[] = [];
@@ -223,7 +213,6 @@ export async function fetchDealsFromSheet(opts?: { includePrivate?: boolean }): 
       const title = row[titleIndex];
 
       if (!id || !title) {
-        console.log(`⚠️ 行 ${i+1} スキップ: 必須項目(id, title)が不足しています (id: ${id}, title: ${title})`);
         continue;
       }
 
@@ -259,7 +248,6 @@ export async function fetchDealsFromSheet(opts?: { includePrivate?: boolean }): 
       deals.push(deal);
     }
 
-    console.log(`✅ 有効なデータ件数: ${deals.length}件`);
     return deals;
   } catch (error) {
     console.error('Google Sheetsからのデータ取得エラー:', error);
@@ -540,7 +528,5 @@ export async function updateDeal(id: string, updates: Partial<Deal>): Promise<vo
       values: [targetRow],
     },
   });
-
-  console.log(`✅ ID: ${id} のデータを更新しました`);
 }
 

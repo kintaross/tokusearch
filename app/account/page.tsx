@@ -45,7 +45,7 @@ export default function AccountPage() {
         const allIds = [...new Set([...favIds, ...savedIds])];
         let dealsMap = new Map<string, Deal>();
         if (allIds.length > 0) {
-          const listRes = await fetch('/api/deals');
+          const listRes = await fetch(`/api/deals/batch?ids=${encodeURIComponent(allIds.join(','))}`);
           const listData = listRes.ok ? await listRes.json() : { deals: [] };
           (listData.deals ?? []).forEach((d: Deal) => dealsMap.set(d.id, d));
         }

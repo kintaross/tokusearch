@@ -5,11 +5,15 @@ import {
   fetchColumnsFromDb,
   getColumnByIdFromDb,
   getColumnBySlugFromDb,
+  getRelatedColumnsFromDb,
+  getPopularColumnsFromDb,
+  getAllCategoriesFromDb,
   createColumnInDb,
   updateColumnInDb,
   deleteColumnInDb,
   incrementColumnViewCountInDb,
 } from '@/lib/columns-db';
+import { getCached, CACHE_TTL_PUBLIC_MS } from '@/lib/cache';
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '';
 const COLUMNS_SHEET_NAME = 'columns';
@@ -44,7 +48,18 @@ export async function fetchColumnsFromSheet(
   try {
     if (useColumnsDb()) {
       const pool = getDbPool();
-      return await fetchColumnsFromDb(pool, options);
+      const wantPublished = options?.status === 'published' || options?.status === undefined;
+      let columns: Column[];
+      if (wantPublished) {
+        columns = await getCached('columns:published', CACHE_TTL_PUBLIC_MS, () =>
+          fetchColumnsFromDb(pool, { status: 'published' })
+        );
+        if (options?.category) columns = columns.filter((col) => col.category === options.category);
+        if (options?.featured !== undefined) columns = columns.filter((col) => col.is_featured === options.featured);
+      } else {
+        columns = await fetchColumnsFromDb(pool, options);
+      }
+      return columns;
     }
 
     const sheets = await getGoogleSheetsClient();
@@ -98,34 +113,13 @@ export async function getColumnBySlug(slug: string): Promise<Column | null> {
     return await getColumnBySlugFromDb(pool, decodeURIComponent(slug));
   }
   const columns = await fetchColumnsFromSheet();
-  
-  // URLデコード処理（念のため）
   const decodedSlug = decodeURIComponent(slug);
-  
-  console.log('🔍 検索slug:', decodedSlug);
-  console.log('📊 利用可能なslug:', columns.map(c => c.slug).slice(0, 5));
-  
-  // 1. 完全一致で検索（slug列の値と比較）
+
   let found = columns.find((col) => col.slug === decodedSlug);
-  
-  // 2. 見つからない場合、タイトルから生成したslugで検索（後方互換性のため）
   if (!found) {
-    console.log('⚠️ slug列で見つからないため、タイトルから生成して検索...');
     found = columns.find((col) => generateSlug(col.title) === decodedSlug);
-    
-    if (found) {
-      console.log('✅ タイトルから生成したslugで見つかりました:', found.title);
-    }
-  } else {
-    console.log('✅ slug列で見つかりました:', found.title);
   }
-  
-  if (!found) {
-    console.log('❌ 一致するコラムが見つかりません');
-    console.log('🔍 検索したslug:', decodedSlug);
-    console.log('📋 全てのslug:', columns.map(c => `${c.slug} (${c.title})`));
-  }
-  
+
   return found || null;
 }
 
@@ -312,18 +306,24 @@ export function generateSlug(title: string): string {
 
 // 関連記事を取得（同一カテゴリの新着順、現在の記事を除く）
 export async function getRelatedColumns(currentColumnId: string, category: string, limit: number = 3): Promise<Column[]> {
+  if (useColumnsDb()) {
+    const pool = getDbPool();
+    return await getRelatedColumnsFromDb(pool, currentColumnId, category, limit);
+  }
   const allColumns = await fetchColumnsFromSheet({ status: 'published' });
-  
   return allColumns
-    .filter(col => col.id !== currentColumnId && col.category === category)
+    .filter((col) => col.id !== currentColumnId && col.category === category)
     .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
     .slice(0, limit);
 }
 
 // 人気コラムを取得（view_count降順）
 export async function getPopularColumns(limit: number = 5): Promise<Column[]> {
+  if (useColumnsDb()) {
+    const pool = getDbPool();
+    return await getPopularColumnsFromDb(pool, limit);
+  }
   const allColumns = await fetchColumnsFromSheet({ status: 'published' });
-  
   return allColumns
     .sort((a, b) => b.view_count - a.view_count)
     .slice(0, limit);
@@ -331,8 +331,12 @@ export async function getPopularColumns(limit: number = 5): Promise<Column[]> {
 
 // 全カテゴリを取得（動的サイドナビ用）
 export async function getAllCategories(): Promise<string[]> {
+  if (useColumnsDb()) {
+    const pool = getDbPool();
+    return await getAllCategoriesFromDb(pool);
+  }
   const allColumns = await fetchColumnsFromSheet({ status: 'published' });
-  const categories = [...new Set(allColumns.map(col => col.category))];
+  const categories = [...new Set(allColumns.map((col) => col.category))];
   return categories.sort();
 }
 

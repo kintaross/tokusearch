@@ -32,65 +32,31 @@ export function ColumnImage({ src, alt, className = '' }: ColumnImageProps) {
 
   // GoogleドライブのURL形式を最適化（プロキシ経由で読み込む）
   const optimizeGoogleDriveUrl = (url: string): string => {
-    // ファイルIDを抽出
     const fileId = extractFileId(url);
-    if (!fileId) {
-      // ファイルIDが抽出できない場合は元のURLを返す
-      console.warn('ファイルIDが抽出できませんでした:', url);
-      return url;
-    }
-    
-    // ファイルIDが抽出できた場合、確実にuc?export=view&id=形式に変換
+    if (!fileId) return url;
     const driveUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-    
-    // CORSエラーを回避するため、プロキシ経由で読み込む
-    const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(driveUrl)}`;
-    console.log('URL最適化（プロキシ経由）:', url, '->', proxyUrl);
-    return proxyUrl;
+    return `/api/image-proxy?url=${encodeURIComponent(driveUrl)}`;
   };
 
   // 初回レンダリング時にURLを最適化
   useEffect(() => {
-    console.log('ColumnImage初期化 - 元のURL:', src);
     const optimizedUrl = optimizeGoogleDriveUrl(src);
-    if (optimizedUrl !== src) {
-      console.log('URLを最適化:', src, '->', optimizedUrl);
-      setImageSrc(optimizedUrl);
-    } else {
-      setImageSrc(src);
-    }
+    setImageSrc(optimizedUrl !== src ? optimizedUrl : src);
   }, [src]);
 
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    const target = e.target as HTMLImageElement;
-    console.error('画像読み込みエラー:', {
-      使用中のURL: imageSrc,
-      元のURL: src,
-      naturalWidth: target.naturalWidth,
-      naturalHeight: target.naturalHeight,
-      complete: target.complete,
-      error: e,
-    });
-    
     if (!hasError) {
       setHasError(true);
-      // 最初のエラー時、最適化されたURLを試す
       const optimizedUrl = optimizeGoogleDriveUrl(imageSrc);
       if (optimizedUrl !== imageSrc) {
-        console.log('画像読み込み失敗、URL形式を変換してリトライ:', imageSrc, '->', optimizedUrl);
         setImageSrc(optimizedUrl);
-        setHasError(false); // リトライするため、エラーフラグをリセット
+        setHasError(false);
       } else {
         setErrorMessage('画像を読み込めませんでした。URLを確認してください。');
-        console.error('すべてのURL形式が失敗しました。最終URL:', imageSrc);
       }
     } else {
       setErrorMessage('画像を読み込めませんでした。URLを確認してください。');
     }
-  };
-
-  const handleLoad = () => {
-    console.log('画像読み込み成功:', imageSrc);
   };
 
   if (hasError && imageSrc === src) {
@@ -118,7 +84,6 @@ export function ColumnImage({ src, alt, className = '' }: ColumnImageProps) {
       alt={alt}
       className={className}
       onError={handleError}
-      onLoad={handleLoad}
       loading="lazy"
     />
   );

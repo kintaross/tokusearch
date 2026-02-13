@@ -195,3 +195,51 @@ export async function incrementColumnViewCountInDb(pool: Pool, id: string): Prom
   await pool.query(`UPDATE columns SET view_count = view_count + 1, updated_at = NOW() WHERE id = $1`, [id]);
 }
 
+/** Related columns by category (lightweight: no content_markdown). */
+export async function getRelatedColumnsFromDb(
+  pool: Pool,
+  excludeId: string,
+  category: string,
+  limit: number = 3
+): Promise<Column[]> {
+  const { rows } = await pool.query(
+    `
+    SELECT id, slug, title, description, '' AS content_markdown, '' AS content_html,
+      category, tags, thumbnail_url, author, status, is_featured, view_count,
+      created_at, updated_at, published_at
+    FROM columns
+    WHERE status = 'published' AND category = $1 AND id != $2
+    ORDER BY COALESCE(published_at, created_at) DESC NULLS LAST
+    LIMIT $3
+    `,
+    [category, excludeId, limit]
+  );
+  return rows.map(rowToColumn);
+}
+
+/** Popular columns by view_count (lightweight: no content_markdown). */
+export async function getPopularColumnsFromDb(pool: Pool, limit: number = 5): Promise<Column[]> {
+  const { rows } = await pool.query(
+    `
+    SELECT id, slug, title, description, '' AS content_markdown, '' AS content_html,
+      category, tags, thumbnail_url, author, status, is_featured, view_count,
+      created_at, updated_at, published_at
+    FROM columns
+    WHERE status = 'published'
+    ORDER BY view_count DESC NULLS LAST
+    LIMIT $1
+    `,
+    [limit]
+  );
+  return rows.map(rowToColumn);
+}
+
+/** All categories for side nav. */
+export async function getAllCategoriesFromDb(pool: Pool): Promise<string[]> {
+  const { rows } = await pool.query<{ category: string }>(
+    `SELECT DISTINCT category FROM columns WHERE status = 'published' AND category IS NOT NULL AND category != '' ORDER BY category`,
+    []
+  );
+  return rows.map((r) => r.category);
+}
+

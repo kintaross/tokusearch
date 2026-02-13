@@ -161,31 +161,29 @@ export default async function ColumnDetailPage({ params }: Props) {
     notFound();
   }
 
-  // 閲覧数をインクリメント
-  await incrementViewCount(column.id);
+  // 閲覧数をインクリメント（非同期・待機しない）
+  void incrementViewCount(column.id);
 
-  const tags = column.tags ? column.tags.split(',').map(t => t.trim()) : [];
-  
+  const tags = column.tags ? column.tags.split(',').map((t) => t.trim()) : [];
+
   // マークダウンを正規化（見出しの後に改行がない場合、改行を追加）
   const normalizedContent = normalizeMarkdown(column.content_markdown);
-  
+
   // タイトル二重表示を防ぐため、先頭H1を削除
   const processedContent = removeLeadingH1(normalizedContent, column.title);
-  
+
   // リード文を抽出
   const leadText = extractLead(column.description, processedContent);
-  
+
   // 目次用の見出しを抽出
   const headings = extractHeadings(processedContent);
-  
-  // 関連記事を取得
-  const relatedColumns = await getRelatedColumns(column.id, column.category, 3);
-  
-  // 人気記事を取得
-  const popularColumns = await getPopularColumns(5);
-  
-  // 全カテゴリを取得（サイドナビ用）
-  const allCategories = await getAllCategories();
+
+  // 関連記事・人気記事・カテゴリを並列取得
+  const [relatedColumns, popularColumns, allCategories] = await Promise.all([
+    getRelatedColumns(column.id, column.category, 3),
+    getPopularColumns(5),
+    getAllCategories(),
+  ]);
 
   return (
     <div className="min-h-screen bg-gray-50">

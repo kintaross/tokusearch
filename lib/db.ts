@@ -19,9 +19,8 @@ export function getDbPool(): Pool {
   if (!global.__tokusearchPgPool) {
     global.__tokusearchPgPool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      // serverless環境でのコネクション枯渇を避けるため控えめに
-      max: 2,
-      idleTimeoutMillis: 30_000,
+      max: 10,
+      idleTimeoutMillis: 20_000,
       connectionTimeoutMillis: 10_000,
     });
   }

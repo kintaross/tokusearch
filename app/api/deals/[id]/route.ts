@@ -19,7 +19,9 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(deal);
+    const res = NextResponse.json(deal);
+    res.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
+    return res;
   } catch (error) {
     console.error('APIエラー:', error);
     return NextResponse.json(

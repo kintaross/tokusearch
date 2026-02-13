@@ -12,12 +12,13 @@ export async function getFavorites(pool: Pool, userId: string): Promise<string[]
 
 export async function setFavorites(pool: Pool, userId: string, dealIds: string[]): Promise<void> {
   await pool.query('DELETE FROM user_favorites WHERE user_id = $1', [userId]);
-  for (const dealId of dealIds) {
-    await pool.query(
-      'INSERT INTO user_favorites (user_id, deal_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-      [userId, dealId]
-    );
-  }
+  if (dealIds.length === 0) return;
+  await pool.query(
+    `INSERT INTO user_favorites (user_id, deal_id)
+     SELECT $1, unnest($2::text[])
+     ON CONFLICT (user_id, deal_id) DO NOTHING`,
+    [userId, dealIds]
+  );
 }
 
 export async function addFavorite(pool: Pool, userId: string, dealId: string): Promise<void> {
