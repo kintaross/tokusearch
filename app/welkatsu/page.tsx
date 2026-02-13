@@ -1,18 +1,29 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
 import { fetchDealsForPublic } from '@/lib/deals-data';
-import { isWelkatsuPeriod, getTodayString, calculateRemainingDays } from '@/lib/home-utils';
-import { AreaTypeBadge, TargetUserTypeBadge, CategoryBadge } from '@/components/DealBadges';
+import { getWelkatsuStatus, getTodayString, isWelkatsuPeriod } from '@/lib/home-utils';
+import { getDbPool } from '@/lib/db';
+import { getCurrentMonth, getWelkatsuPlaybookForMonth } from '@/lib/db-welkatsu-playbooks';
 import { ShoppingBag, Calendar, Archive } from 'lucide-react';
+import { WelkatsuStatusBanner } from '@/components/welkatsu/WelkatsuStatusBanner';
+import { PhaseCards } from '@/components/welkatsu/PhaseCards';
+import { Checklist } from '@/components/welkatsu/Checklist';
+import { TimelineSection } from '@/components/welkatsu/TimelineSection';
+import { RegisterSteps } from '@/components/welkatsu/RegisterSteps';
+import { PitfallsSection } from '@/components/welkatsu/PitfallsSection';
+import { PointCalcSection } from '@/components/welkatsu/PointCalcSection';
+import { DealsCollapsible } from '@/components/welkatsu/DealsCollapsible';
+import { ColumnLinks } from '@/components/welkatsu/ColumnLinks';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'ウエル活 | TokuSearch',
-  description: '毎月20日のウエル活向けお得情報をまとめてチェック。ウエルシアでのポイント活用術やキャンペーン情報。',
+  title: 'ウエル活・当日攻略 | TokuSearch',
+  description:
+    '毎月20日のウエル活を迷わず回す当日攻略。最短ルート・レジ手順・地雷回避・ポイントの目安。ウエルシアポイント1.5倍デー特化。',
   openGraph: {
-    title: 'ウエル活 | TokuSearch',
-    description: '毎月20日のウエル活向けお得情報',
+    title: 'ウエル活・当日攻略 | TokuSearch',
+    description: '毎月20日ウエル活の当日攻略。最短ルート・レジ手順・地雷回避',
     url: 'https://tokusearch.vercel.app/welkatsu',
   },
   alternates: {
@@ -21,35 +32,23 @@ export const metadata: Metadata = {
 };
 
 export default async function WelkatsuPage() {
-  const allDeals = await fetchDealsForPublic();
   const today = getTodayString();
+  const status = getWelkatsuStatus();
   const isActive = isWelkatsuPeriod();
-  
-  // 今月（当月1-20日）の日付
-  const currentMonth = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' });
+  const currentMonthStr = getCurrentMonth();
   const welkatsuDay = `${new Date().getFullYear()}年${new Date().getMonth() + 1}月20日`;
-  
-  // ウエル活案件を抽出（当月のみ）
-  const welkatsuDeals = allDeals.filter(deal => {
+
+  let playbook = null;
+  try {
+    const pool = getDbPool();
+    playbook = await getWelkatsuPlaybookForMonth(pool, currentMonthStr);
+  } catch (_) {
+    // DB未設定時は playbook なしで表示
+  }
+
+  const allDeals = await fetchDealsForPublic();
+  const welkatsuDeals = allDeals.filter((deal) => {
     if (!deal.is_public || !deal.is_welkatsu) return false;
-    
-    // expiration が当月1-20日の範囲に含まれるもの
-    if (deal.expiration) {
-      const expirationDate = new Date(deal.expiration);
-      const currentYear = new Date().getFullYear();
-      const currentMonthNum = new Date().getMonth();
-      
-      if (
-        expirationDate.getFullYear() === currentYear &&
-        expirationDate.getMonth() === currentMonthNum &&
-        expirationDate.getDate() >= 1 &&
-        expirationDate.getDate() <= 20
-      ) {
-        return true;
-      }
-    }
-    
-    // または、created_at/date が当月のもの
     const dealDate = new Date(deal.date || deal.created_at);
     if (
       dealDate.getFullYear() === new Date().getFullYear() &&
@@ -57,159 +56,141 @@ export default async function WelkatsuPage() {
     ) {
       return true;
     }
-    
+    if (deal.expiration) {
+      const exp = new Date(deal.expiration);
+      if (
+        exp.getFullYear() === new Date().getFullYear() &&
+        exp.getMonth() === new Date().getMonth() &&
+        exp.getDate() >= 1 &&
+        exp.getDate() <= 20
+      ) {
+        return true;
+      }
+    }
     return false;
   });
-  
-  // 優先度順にソート
-  const sortedDeals = welkatsuDeals.sort((a, b) => {
-    const priorityOrder = { A: 1, B: 2, C: 3 };
-    const priorityA = priorityOrder[a.priority];
-    const priorityB = priorityOrder[b.priority];
-    if (priorityA !== priorityB) return priorityA - priorityB;
-    
-    return b.score - a.score;
+  const sortedDeals = [...welkatsuDeals].sort((a, b) => {
+    const order = { A: 1, B: 2, C: 3 };
+    if (order[a.priority] !== order[b.priority]) return order[a.priority] - order[b.priority];
+    return (b.score ?? 0) - (a.score ?? 0);
   });
+
+  const content = playbook?.content_json ?? {};
+  const hasPlaybookContent =
+    (content.phases?.length ?? 0) > 0 ||
+    (content.timeline?.length ?? 0) > 0 ||
+    (content.register_steps?.length ?? 0) > 0 ||
+    (content.pitfalls?.length ?? 0) > 0 ||
+    content.point_calc;
 
   return (
     <div className="pt-20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* ヘッダー */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-3">
-          <ShoppingBag className="w-8 h-8 text-purple-600" />
-          <h1 className="text-3xl md:text-4xl font-bold text-[#0f1419]">
-            ウエル活
-          </h1>
-        </div>
-        <p className="text-sm md:text-base text-[#4c4f55] mb-4">
-          毎月20日はウエルシアでポイント1.5倍！ウエル活向けのキャンペーン情報をまとめました。
-        </p>
-        
-        {/* 今月のウエル活デー */}
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-4 mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar className="w-5 h-5 text-purple-600" />
-            <div className="text-sm font-semibold text-purple-900">今月のウエル活デー</div>
+        {/* ヘッダー */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <ShoppingBag className="w-8 h-8 text-purple-600" />
+            <h1 className="text-3xl md:text-4xl font-bold text-[#0f1419]">ウエル活</h1>
           </div>
-          <div className="text-2xl font-bold text-purple-700">{welkatsuDay}</div>
-          <div className="text-xs text-purple-600 mt-1">本日：{today}</div>
+          <p className="text-sm md:text-base text-[#4c4f55] mb-4">
+            毎月20日はウエルシアでポイント1.5倍。当日迷わず回すための攻略に特化しました。
+          </p>
+          <WelkatsuStatusBanner
+            status={status}
+            welkatsuDay={welkatsuDay}
+            todayLabel={today}
+          />
         </div>
-      </div>
 
-      {/* メインコンテンツ */}
-      {isActive ? (
-        <>
-          {/* ウエル活期間中（1-20日） */}
-          <section className="mb-8">
-            <h2 className="text-xl md:text-2xl font-bold text-[#0f1419] mb-4">
-              {currentMonth}のウエル活向けキャンペーン ({sortedDeals.length}件)
-            </h2>
-            
-            {sortedDeals.length === 0 ? (
-              <div className="bg-white border border-[#ebe7df] rounded-xl p-8 text-center">
-                <p className="text-[#6b6f76] mb-2">現在、ウエル活向けのキャンペーン情報はありません</p>
-                <p className="text-xs text-[#6b6f76]">新しい情報が追加され次第、こちらに表示されます</p>
-              </div>
+        {/* 当日攻略コンテンツ（DB playbook またはフォールバック） */}
+        {isActive && (
+          <>
+            {hasPlaybookContent ? (
+              <>
+                {playbook?.summary ? (
+                  <p className="text-[#4c4f55] mb-6 pl-0">{playbook.summary}</p>
+                ) : null}
+                {content.phases?.length ? <PhaseCards phases={content.phases} /> : null}
+                {content.checklist_labels?.length ? (
+                  <Checklist month={currentMonthStr} labels={content.checklist_labels} />
+                ) : null}
+                {content.timeline?.length ? (
+                  <TimelineSection slots={content.timeline} />
+                ) : null}
+                {content.register_steps?.length ? (
+                  <RegisterSteps steps={content.register_steps} />
+                ) : null}
+                {content.pitfalls?.length ? (
+                  <PitfallsSection pitfalls={content.pitfalls} />
+                ) : null}
+                {content.point_calc ? (
+                  <PointCalcSection pointCalc={content.point_calc} />
+                ) : null}
+                {playbook?.updated_at ? (
+                  <p className="text-xs text-gray-500 mb-6">
+                    攻略の最終更新: {new Date(playbook.updated_at).toLocaleDateString('ja-JP')}
+                  </p>
+                ) : null}
+              </>
             ) : (
-              <div className="space-y-4">
-                {sortedDeals.map((deal) => (
-                  <Link
-                    key={deal.id}
-                    href={`/deals/${deal.id}`}
-                    className="block bg-white border-2 border-purple-200 rounded-xl p-5 hover:shadow-lg transition-shadow group"
-                  >
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <span className="px-2.5 py-1 rounded text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                        ウエル活
-                      </span>
-                      <CategoryBadge category={deal.category_main} />
-                      {deal.priority === 'A' && (
-                        <span className="px-2 py-0.5 rounded text-xs font-bold bg-red-50 text-red-700 border border-red-200">
-                          注目
-                        </span>
-                      )}
-                    </div>
-                    
-                    <h3 className="text-base md:text-lg font-bold text-[#0f1419] mb-2 group-hover:text-brand-600 transition-colors">
-                      {deal.title}
-                    </h3>
-                    
-                    <p className="text-sm text-[#6b6f76] mb-3 line-clamp-2">
-                      {deal.summary}
-                    </p>
-                    
-                    <div className="flex flex-wrap items-center gap-2 text-sm mb-3">
-                      {deal.discount_rate && (
-                        <span className="font-bold text-brand-600">{deal.discount_rate}%還元</span>
-                      )}
-                      {deal.discount_amount && (
-                        <span className="font-bold text-green-600">¥{deal.discount_amount.toLocaleString()}</span>
-                      )}
-                      {deal.expiration && (
-                        <span className="text-red-600 font-medium">
-                          {calculateRemainingDays(deal.expiration)}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      <AreaTypeBadge areaType={deal.area_type} />
-                      <TargetUserTypeBadge targetUserType={deal.target_user_type} />
-                    </div>
-                  </Link>
-                ))}
+              <div className="bg-white border border-[#ebe7df] rounded-xl p-6 mb-8 text-center">
+                <p className="text-[#6b6f76] mb-2">
+                  今月の当日攻略は準備中です。下の「今日の狙い目」でキャンペーンを確認できます。
+                </p>
               </div>
             )}
-          </section>
-        </>
-      ) : (
-        <>
-          {/* ウエル活期間外（21日以降） */}
-          <div className="bg-white border border-[#ebe7df] rounded-xl p-8 text-center mb-8">
-            <div className="text-4xl mb-4">📅</div>
-            <h2 className="text-xl font-bold text-[#0f1419] mb-2">
-              今月のウエル活情報は終了しました
-            </h2>
-            <p className="text-sm text-[#6b6f76] mb-4">
-              次回は来月1日〜20日に更新されます
-            </p>
-            <div className="text-xs text-[#6b6f76]">
-              毎月20日がウエルシアのポイント1.5倍デーです
+
+            <ColumnLinks />
+
+            <DealsCollapsible deals={sortedDeals} title="今日の狙い目（キャンペーン）" />
+          </>
+        )}
+
+        {!isActive && (
+          <>
+            <div className="bg-white border border-[#ebe7df] rounded-xl p-8 text-center mb-8">
+              <div className="text-4xl mb-4">📅</div>
+              <h2 className="text-xl font-bold text-[#0f1419] mb-2">
+                今月のウエル活情報は終了しました
+              </h2>
+              <p className="text-sm text-[#6b6f76] mb-4">
+                次回は来月1日〜20日に更新されます
+              </p>
+              <p className="text-xs text-[#6b6f76]">
+                毎月20日がウエルシアのポイント1.5倍デーです
+              </p>
             </div>
+            <ColumnLinks />
+          </>
+        )}
+
+        {/* 過去アーカイブ */}
+        <section className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Archive className="w-5 h-5 text-gray-600" />
+            <h3 className="text-lg font-bold text-[#0f1419]">過去のウエル活情報</h3>
           </div>
-        </>
-      )}
+          <p className="text-sm text-[#6b6f76] mb-4">
+            過去のウエル活キャンペーン情報をご覧になれます
+          </p>
+          <Link
+            href="/welkatsu/archive"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors text-sm"
+          >
+            <Archive className="w-4 h-4" />
+            アーカイブを見る
+          </Link>
+        </section>
 
-      {/* 過去アーカイブへのリンク */}
-      <section className="bg-gray-50 border border-gray-200 rounded-xl p-6">
-        <div className="flex items-center gap-2 mb-3">
-          <Archive className="w-5 h-5 text-gray-600" />
-          <h3 className="text-lg font-bold text-[#0f1419]">過去のウエル活情報</h3>
+        <div className="mt-8 text-center">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-brand-600 hover:text-brand-700 font-semibold"
+          >
+            ← ホームに戻る
+          </Link>
         </div>
-        <p className="text-sm text-[#6b6f76] mb-4">
-          過去のウエル活キャンペーン情報をご覧になれます
-        </p>
-        <Link
-          href="/welkatsu/archive"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors text-sm"
-        >
-          <Archive className="w-4 h-4" />
-          アーカイブを見る
-        </Link>
-      </section>
-
-      {/* ホームへ戻るリンク */}
-      <div className="mt-8 text-center">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-brand-600 hover:text-brand-700 font-semibold"
-        >
-          ← ホームに戻る
-        </Link>
-      </div>
       </div>
     </div>
   );
 }
-

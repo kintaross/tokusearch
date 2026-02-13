@@ -4,6 +4,9 @@ import { Deal } from '@/types/deal';
  * ホーム画面用ユーティリティ関数
  */
 
+/** YYYY-MM-DD 形式の正規表現（期限が日付として解釈されるか） */
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
 /**
  * 今日の日付（YYYY-MM-DD形式）
  */
@@ -38,6 +41,16 @@ export function isWelkatsuPeriod(): boolean {
   return day >= 1 && day <= 20;
 }
 
+/** ウエル活の今日の状態: 準備期間(1-19) / 当日(20) / 終了(21-) */
+export type WelkatsuStatus = 'prep' | 'today' | 'ended';
+
+export function getWelkatsuStatus(): WelkatsuStatus {
+  const day = new Date().getDate();
+  if (day >= 21) return 'ended';
+  if (day === 20) return 'today';
+  return 'prep';
+}
+
 /**
  * 期限が指定日付かどうか
  */
@@ -49,14 +62,21 @@ export function isExpiringOn(expiration: string, targetDate: string): boolean {
 
 /**
  * 期限が今日以降かどうか（未設定も含む）
+ * 日付として解釈できない文字列（常時・毎日・期間限定など）は有効扱い
  */
 export function isActiveNow(expiration: string): boolean {
-  if (!expiration) return true; // 期限未設定は有効とみなす
-  
+  if (!expiration || typeof expiration !== 'string') return true;
+  const t = expiration.trim();
+  if (!t) return true;
+
+  if (!DATE_ONLY_PATTERN.test(t)) {
+    return true;
+  }
+  const expirationDate = new Date(t);
+  if (isNaN(expirationDate.getTime())) return true;
+
   const today = getTodayString();
-  const expirationDate = new Date(expiration);
   const todayDate = new Date(today);
-  
   return expirationDate >= todayDate;
 }
 
@@ -286,5 +306,58 @@ export function getTargetUserTypeLabel(targetUserType?: string): string {
     default:
       return '-';
   }
+}
+
+/**
+ * 期限が日付形式（YYYY-MM-DD）かどうか
+ * 常時・毎日・期間限定などは false
+ */
+export function isExpirationDateLike(expiration: string): boolean {
+  if (!expiration || typeof expiration !== 'string') return false;
+  const t = expiration.trim();
+  if (!t) return false;
+  return DATE_ONLY_PATTERN.test(t) && !isNaN(new Date(t).getTime());
+}
+
+/**
+ * コツコツ/ポチポチ系案件かどうか
+ * category_sub または tags/本文に コツコツ|ポチポチ を含む
+ */
+export function isKotsukotsuDeal(deal: Deal): boolean {
+  if (!deal.is_public) return false;
+  const sub = (deal.category_sub || '').trim();
+  if (sub === 'コツコツ') return true;
+  const tags = (deal.tags || '').toLowerCase();
+  if (/コツコツ|ポチポチ/.test(tags)) return true;
+  const text = `${deal.title} ${deal.summary} ${deal.detail} ${deal.steps} ${deal.notes}`.toLowerCase();
+  return /コツコツ|ポチポチ/.test(text);
+}
+
+/**
+ * コツコツ案件のみに絞り込み
+ */
+export function getKotsukotsuDeals(deals: Deal[]): Deal[] {
+  return deals.filter(isKotsukotsuDeal);
+}
+
+/**
+ * 直近 N 日以内に追加されたコツコツ案件（新着）
+ */
+export function getKotsukotsuNewDeals(deals: Deal[], days: number = 7): Deal[] {
+  const k = getKotsukotsuDeals(deals);
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  return k.filter((d) => {
+    const created = d.created_at ? new Date(d.created_at) : new Date(d.date);
+    return created >= since;
+  }).sort((a, b) => (b.created_at || b.date).localeCompare(a.created_at || a.date));
+}
+
+/**
+ * 期限が日付でないコツコツ案件（常設：常時・毎日など）
+ */
+export function getKotsukotsuConstantDeals(deals: Deal[]): Deal[] {
+  const k = getKotsukotsuDeals(deals);
+  return k.filter((d) => !isExpirationDateLike(d.expiration || ''));
 }
 

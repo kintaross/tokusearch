@@ -16,6 +16,7 @@ DB移行後は、n8nが **Google Sheetsに書き込み続ける** とDB側が更
 - `POST /api/ingest/column-themes/used`（テーマ使用済み更新）
 - `POST /api/ingest/column-requests`（承認リクエストUPSERT）
 - `POST /api/ingest/column-requests/status`（ステータス更新）
+- `POST /api/ingest/welkatsu-playbooks`（ウエル活当日攻略 playbook の upsert。詳細は [N8N_WELKATSU_PLAYBOOK.md](N8N_WELKATSU_PLAYBOOK.md)）
 
 ### 認証
 
@@ -64,6 +65,7 @@ DB移行後は、n8nが **Google Sheetsに書き込み続ける** とDB側が更
 - **お得情報（DB版）**: `n8n_workflow/deals-workflow-db-ingest.json`
 - **コラム自動生成（DB版）**: `n8n_workflow/columns-auto-noimage-db.json`
 - **コラム承認（DB版）**: `n8n_workflow/column-approval-db.json`
+- **ウエル活当日攻略（DB版）**: `n8n_workflow/welkatsu-playbook-db-ingest.json`（[N8N_WELKATSU_PLAYBOOK.md](N8N_WELKATSU_PLAYBOOK.md) 参照）
 
 ### HTTP Request（例）
 

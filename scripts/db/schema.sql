@@ -209,4 +209,20 @@ CREATE INDEX IF NOT EXISTS idx_user_deal_transactions_user_id ON user_deal_trans
 CREATE INDEX IF NOT EXISTS idx_user_deal_transactions_deal_id ON user_deal_transactions (deal_id);
 CREATE INDEX IF NOT EXISTS idx_user_deal_transactions_occurred_on ON user_deal_transactions (occurred_on);
 
+-- =========================
+-- welkatsu_playbooks (当日攻略・20日特化)
+-- =========================
+CREATE TABLE IF NOT EXISTS welkatsu_playbooks (
+  id TEXT PRIMARY KEY,
+  month TEXT NOT NULL,
+  title TEXT NOT NULL,
+  summary TEXT,
+  content_json JSONB NOT NULL,
+  sources_json JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_welkatsu_playbooks_month ON welkatsu_playbooks (month);
+
 COMMIT;

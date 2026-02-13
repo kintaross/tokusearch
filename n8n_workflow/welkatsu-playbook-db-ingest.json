@@ -1,0 +1,141 @@
+{
+  "name": "ウエル活当日攻略 Playbook 生成＆DB投入",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [120, 200],
+      "id": "trigger-welkatsu",
+      "name": "ScheduleDaily"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 18〜21日のみ実行（当月 playbook を更新する期間）\nconst now = new Date();\nconst day = now.getDate();\nif (day < 18 || day > 21) {\n  return []; // 実行しない\n}\nconst y = now.getFullYear();\nconst m = String(now.getMonth() + 1).padStart(2, '0');\nconst month = `${y}-${m}`;\n\nconst prompt = `あなたはウエル活（毎月20日・ウエルシアお客様感謝デー）の「当日攻略」に特化したポイ活上級者です。\n今月（${month}）のウエル活に向けて、以下のJSON形式**のみ**で出力してください。説明文・コードブロック・マークダウンは一切不要です。\n\n{\n  \"title\": \"今月のウエル活・当日攻略の見出し（短く）\",\n  \"summary\": \"2〜3行の要約\",\n  \"content_json\": {\n    \"phases\": [\n      { \"key\": \"BeforeStore\", \"title\": \"店舗に行く前\", \"steps\": [\"手順1\", \"手順2\"] },\n      { \"key\": \"InStore\", \"title\": \"店内で\", \"steps\": [\"手順1\", \"手順2\"] },\n      { \"key\": \"AfterStore\", \"title\": \"支払い後\", \"steps\": [\"手順1\"] }\n    ],\n    \"timeline\": [\n      { \"label\": \"朝\", \"description\": \"説明\", \"tips\": [\"Tip\"] },\n      { \"label\": \"昼\", \"description\": \"説明\" },\n      { \"label\": \"夕方・閉店前\", \"description\": \"説明\" }\n    ],\n    \"register_steps\": [\n      { \"order\": 1, \"label\": \"クーポン提示\", \"detail\": \"説明\" },\n      { \"order\": 2, \"label\": \"ポイント適用\", \"detail\": \"説明\" },\n      { \"order\": 3, \"label\": \"支払い\", \"detail\": \"説明\" }\n    ],\n    \"pitfalls\": [\n      { \"title\": \"よくある失敗\", \"description\": \"説明\", \"severity\": \"warning\" }\n    ],\n    \"point_calc\": { \"description\": \"ポイントの目安・端数調整の考え方\", \"formula\": \"任意\", \"example\": \"任意\" },\n    \"checklist_labels\": [\"前日にWAON POINT残高確認\", \"アプリでクーポン取得\", \"レジでクーポン提示\"]\n  },\n  \"sources_json\": [{ \"title\": \"ウエルシア公式\", \"url\": \"https://www.welcia.co.jp/\" }]\n}\n\nルール:\n- phases の key は必ず BeforeStore, InStore, AfterStore の3つ。steps は具体的に。\n- register_steps はレジで迷わない順（提示→適用→支払い）。\n- pitfalls は対象外・併用不可・よくある失敗を2〜4件。\n- 出力は上記JSONのみ。コードブロックや説明は不要。`;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [340, 200],
+      "id": "date-guard-prompt",
+      "name": "DateGuardAndPrompt"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.month }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [560, 200],
+      "id": "if-in-range",
+      "name": "IfInRange"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [780, 100],
+      "id": "gemini-playbook",
+      "name": "GeminiPlaybook",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gojn353h4HLDUzF2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gemini 応答からテキスト取得し、content_json を検証して Ingest 用に整形\nconst item = $input.first();\nconst raw = item?.json?.content?.parts?.[0]?.text ?? item?.json?.text ?? '';\nif (!raw || typeof raw !== 'string') {\n  throw new Error('Gemini response text not found');\n}\nlet str = raw.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/\\s*```$/i, '')\n  .trim();\nlet data;\ntry {\n  data = JSON.parse(str);\n} catch (e) {\n  throw new Error('Invalid JSON from LLM: ' + str.slice(0, 200));\n}\nconst content = data.content_json;\nif (!content || typeof content !== 'object') {\n  throw new Error('content_json missing');\n}\nconst hasContent = (content.phases?.length > 0) || (content.timeline?.length > 0) ||\n  (content.register_steps?.length > 0) || (content.pitfalls?.length > 0) ||\n  content.point_calc || (content.checklist_labels?.length > 0);\nif (!hasContent) {\n  throw new Error('content_json has no usable fields');\n}\nconst month = $('DateGuardAndPrompt').first().json.month;\nreturn [{\n  json: {\n    id: `welkatsu-${month}`,\n    month,\n    title: data.title || `ウエル活当日攻略 ${month}`,\n    summary: data.summary || null,\n    content_json: content,\n    sources_json: data.sources_json || null\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 100],
+      "id": "parse-validate",
+      "name": "ParseAndValidate"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://tokusearch.vercel.app/api/ingest/welkatsu-playbooks",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-api-key", "value": "={{ $env.N8N_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 100],
+      "id": "ingest-api",
+      "name": "IngestWelkatsuPlaybooks"
+    }
+  ],
+  "connections": {
+    "ScheduleDaily": {
+      "main": [[{ "node": "DateGuardAndPrompt", "type": "main", "index": 0 }]]
+    },
+    "DateGuardAndPrompt": {
+      "main": [[{ "node": "IfInRange", "type": "main", "index": 0 }]]
+    },
+    "IfInRange": {
+      "main": [
+        [{ "node": "GeminiPlaybook", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "GeminiPlaybook": {
+      "main": [[{ "node": "ParseAndValidate", "type": "main", "index": 0 }]]
+    },
+    "ParseAndValidate": {
+      "main": [[{ "node": "IngestWelkatsuPlaybooks", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": { "instanceId": "welkatsu-playbook-ingest" },
+  "tags": []
+}
