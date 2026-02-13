@@ -87,3 +87,13 @@ DB移行後は、n8nが **Google Sheetsに書き込み続ける** とDB側が更
 3. n8nワークフローの最終ノードを **Ingest API** に差し替え
 4. n8n再開
 
+---
+
+## 4) プッシュでマイグレーション（デプロイ時自動）
+
+Vercel では **プッシュ（デプロイ）のたびに** `scripts/db/schema.sql` が自動適用されます。
+
+- **仕組み**: `package.json` の `vercel-build` が `node scripts/db/migrate.js && next build` のため、ビルド前に `migrate.js` が実行される。
+- **条件**: 環境変数 `DATABASE_URL`（または `POSTGRES_URL`）が設定されているときだけマイグレーションを実行。未設定の場合はスキップしビルドはそのまま続行。
+- **手動実行**: ローカルで `npm run db:migrate` でも同じ内容を実行可能。
+

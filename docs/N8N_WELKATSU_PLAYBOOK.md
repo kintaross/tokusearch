@@ -15,7 +15,7 @@
 ## 2) 実行条件
 
 - **スケジュール**: 毎日 06:00（n8n の Schedule Trigger）
-- **日付ガード**: **18〜21日のみ** 本番処理を実行。それ以外の日は何もしない（0 件返却で後続ノードは実行されない）
+- **日付ガード**: **10〜20日のみ** 本番処理を実行（10日から当日攻略情報を利用可能にし、20日まで毎日更新）。それ以外の日は何もしない（0 件返却で後続ノードは実行されない）
 
 ---
 
@@ -87,7 +87,7 @@
 ## 6) ワークフロー構成（ノード概要）
 
 1. **ScheduleDaily** … 毎日 06:00 実行
-2. **DateGuardAndPrompt** … 18〜21日なら当月（YYYY-MM）と LLM 用プロンプトを出力
+2. **DateGuardAndPrompt** … 10〜20日なら当月（YYYY-MM）と LLM 用プロンプトを出力
 3. **IfInRange** … `month` がある場合のみ True 側へ
 4. **GeminiPlaybook** … Google Gemini で JSON 形式の playbook を生成
 5. **ParseAndValidate** … 応答テキストをパースし、`content_json` を検証。`id` / `month` を付与

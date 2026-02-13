@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "next build",
+    "vercel-build": "node scripts/db/migrate.js && next build",
+    "db:migrate": "node scripts/db/migrate.js",
     "start": "next start",
     "lint": "next lint",
     "generate:test-data": "ts-node scripts/generate.ts",
