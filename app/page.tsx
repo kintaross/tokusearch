@@ -4,13 +4,8 @@ import { Metadata } from 'next';
 import { fetchDealsForPublic } from '@/lib/deals-data';
 import { CategoryMain } from '@/types/deal';
 import {
-  calculateTodayStatus,
-  getMustCheckDeals,
-  getEndingSoonDeals,
   getTodayNewDeals,
-  getCategoryCount,
   isActiveNow,
-  calculateRemainingDays,
   isKotsukotsuDeal,
 } from '@/lib/home-utils';
 import { fetchColumnsFromSheet } from '@/lib/columns';
@@ -22,9 +17,6 @@ export const metadata: Metadata = {
   title: 'TokuSearch | 賢い選択、豊かな暮らし',
   description: '今日チェックすべきお得情報を10秒で把握。マストチェック、締切間近、新着情報を一目で確認できる日次ダッシュボード。',
 };
-
-// 一旦「新着のお得」セクションは非表示（要望により暫定対応）
-const SHOW_NEW_DEALS_SECTION = false;
 
 const CATEGORIES: { id: CategoryMain; icon: string; label: string }[] = [
   { id: 'ドラッグストア・日用品', icon: 'medication', label: '日用品' },
@@ -101,17 +93,17 @@ export default async function HomePage({
 
   const isFiltered = !!(search || category || area_type || filter);
   
-  // 通常表示用データ
-  const displayDeals = isFiltered ? filteredDeals : getMustCheckDeals(allDeals);
   // 新着はコツコツ系を除外（コツコツは /kotsukotsu で表示）
-  const todayNewDeals = isFiltered ? [] : getTodayNewDeals(allDeals).filter((d) => !isKotsukotsuDeal(d));
+  // 未絞り込み時は「新着のみ」をメイン表示にする（24時間以内・全件）
+  const todayNewDeals = isFiltered ? [] : getTodayNewDeals(allDeals, 0).filter((d) => !isKotsukotsuDeal(d));
+  const displayDeals = isFiltered ? filteredDeals : todayNewDeals;
 
   const sectionTitle = isFiltered 
     ? (search ? `「${search}」の検索結果` : filter ? '絞り込み結果' : '検索結果')
-    : '本日のお得';
+    : '新着のお得';
   const sectionSubtitle = isFiltered
     ? `${filteredDeals.length}件のお得が見つかりました`
-    : '毎日更新。今日のお得を見つけましょう。';
+    : `過去24時間以内に追加された情報（${todayNewDeals.length}件）`;
 
   // コラムの選定ロジック
   let displayColumns: Column[] = [];
@@ -192,40 +184,7 @@ export default async function HomePage({
         </div>
       </section>
 
-      {/* 新着のお得（24時間以内） */}
-      {SHOW_NEW_DEALS_SECTION && !isFiltered && todayNewDeals.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 border-b border-soft-greige/50">
-          <div className="flex items-center gap-3 mb-6 md:mb-8">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-              <span className="material-symbols-outlined text-lg md:text-2xl">fiber_new</span>
-            </div>
-            <div>
-              <h2 className="text-xl md:text-2xl font-bold text-accent-brown tracking-tight">新着のお得</h2>
-              <p className="text-accent-brown/50 text-xs md:text-sm">過去24時間以内に追加された情報</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {todayNewDeals.slice(0, 6).map((deal) => (
-              <Link key={deal.id} href={`/deals/${deal.id}`} className="bg-white border border-soft-greige rounded-xl md:rounded-2xl p-4 md:p-6 hover:shadow-lg transition-all group">
-                <div className="flex justify-between items-start mb-3 md:mb-4">
-                  <span className="px-2 py-0.5 md:px-3 md:py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-full tracking-wider uppercase">NEW</span>
-                  <span className="text-[10px] md:text-xs text-accent-brown/40 truncate max-w-[120px]">{deal.category_main}</span>
-                </div>
-                <h3 className="font-bold text-base md:text-lg text-accent-brown group-hover:text-primary transition-colors line-clamp-2 mb-2">{deal.title}</h3>
-                <div className="flex items-end justify-between mt-2 md:mt-4">
-                  <div className="text-xs md:text-sm text-accent-brown/60 line-clamp-1 flex-1 mr-2">{deal.service}</div>
-                  <div className="text-lg md:text-xl font-bold text-primary whitespace-nowrap">
-                    {deal.discount_rate ? `${deal.discount_rate}%` : (deal.discount_amount ? `¥${deal.discount_amount.toLocaleString()}` : '')}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* お得情報リスト（メイン） */}
+      {/* お得情報リスト（メイン：未絞り込み時は新着のみ） */}
       <section className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-24">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 gap-4">
           <div>
@@ -242,7 +201,9 @@ export default async function HomePage({
 
         {displayDeals.length === 0 ? (
            <div className="bg-white border border-soft-greige rounded-3xl p-12 text-center">
-             <p className="text-accent-brown/60">条件に一致するお得情報は見つかりませんでした。</p>
+             <p className="text-accent-brown/60">
+               {isFiltered ? '条件に一致するお得情報は見つかりませんでした。' : '過去24時間以内に追加された新着情報はありません。'}
+             </p>
              <Link href="/" className="inline-block mt-4 text-primary font-bold hover:underline">ホームに戻る</Link>
            </div>
         ) : (
