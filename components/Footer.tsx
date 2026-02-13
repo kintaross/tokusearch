@@ -25,13 +25,18 @@ export default function Footer() {
               <h4 className="font-bold mb-5 text-sm tracking-widest text-accent-brown uppercase">サービス</h4>
               <ul className="space-y-4 text-sm text-accent-brown/60 font-medium">
                 <li>
-                  <Link className="hover:text-primary transition-colors" href="/pickup">
-                    注目のお得情報
+                  <Link className="hover:text-primary transition-colors" href="/shinchaku">
+                    新着お得
                   </Link>
                 </li>
                 <li>
-                  <Link className="hover:text-primary transition-colors" href="/ranking">
-                    還元率ランキング
+                  <Link className="hover:text-primary transition-colors" href="/welkatsu">
+                    ウエル活
+                  </Link>
+                </li>
+                <li>
+                  <Link className="hover:text-primary transition-colors" href="/kotsukotsu">
+                    コツコツポイ活
                   </Link>
                 </li>
                 <li>
@@ -47,17 +52,12 @@ export default function Footer() {
               <ul className="space-y-4 text-sm text-accent-brown/60 font-medium">
                 <li>
                   <Link className="hover:text-primary transition-colors" href="/columns">
-                    最新コラム
+                    コラム
                   </Link>
                 </li>
                 <li>
                   <Link className="hover:text-primary transition-colors" href="/columns?category=beginner">
                     ポイ活入門
-                  </Link>
-                </li>
-                <li>
-                  <Link className="hover:text-primary transition-colors" href="/columns?category=interview">
-                    インタビュー
                   </Link>
                 </li>
               </ul>
@@ -67,18 +67,13 @@ export default function Footer() {
               <h4 className="font-bold mb-5 text-sm tracking-widest text-accent-brown uppercase">サポート</h4>
               <ul className="space-y-4 text-sm text-accent-brown/60 font-medium">
                 <li>
-                  <Link className="hover:text-primary transition-colors" href="/about">
-                    お問い合わせ
-                  </Link>
-                </li>
-                <li>
                   <Link className="hover:text-primary transition-colors" href="/policy">
                     利用規約
                   </Link>
                 </li>
                 <li>
                   <Link className="hover:text-primary transition-colors" href="/policy">
-                    プライバシー
+                    プライバシーポリシー
                   </Link>
                 </li>
               </ul>
