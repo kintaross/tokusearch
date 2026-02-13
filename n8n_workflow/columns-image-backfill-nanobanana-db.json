@@ -5,9 +5,9 @@
       "parameters": {
         "rule": {
           "interval": [
-            { "field": "cronExpression", "expression": "0 9 * * *" },
-            { "field": "cronExpression", "expression": "0 12 * * *" },
-            { "field": "cronExpression", "expression": "0 21 * * *" }
+            { "triggerAtHour": 9 },
+            { "triggerAtHour": 12 },
+            { "triggerAtHour": 21 }
           ]
         }
       },
@@ -21,12 +21,12 @@
       "parameters": {
         "method": "GET",
         "url": "https://tokusearch.vercel.app/api/ingest/columns-images/next?limit=1&max_inline=6",
-        "authentication": "none",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "x-api-key", "value": "={{$env.N8N_API_KEY}}" }
+            { "name": "Content-Type", "value": "application/json" }
           ]
         },
         "options": {}
@@ -35,7 +35,13 @@
       "typeVersion": 4.2,
       "position": [ -980, 200 ],
       "id": "get-next",
-      "name": "次のコラム取得（API）"
+      "name": "次のコラム取得（API）",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLEASE_CREATE_N8N_API_KEY_AUTH",
+          "name": "N8N API Key Auth"
+        }
+      }
     },
     {
       "parameters": {
@@ -83,12 +89,12 @@
       "parameters": {
         "method": "POST",
         "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent",
-        "authentication": "none",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "x-goog-api-key", "value": "={{$env.GEMINI_API_KEY}}" }
+            { "name": "Content-Type", "value": "application/json" }
           ]
         },
         "sendBody": true,
@@ -102,11 +108,17 @@
       "typeVersion": 4.2,
       "position": [ -100, 200 ],
       "id": "gen-image",
-      "name": "Nano Banana Pro 生成"
+      "name": "Nano Banana Pro 生成",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLEASE_CREATE_GEMINI_HEADER_AUTH",
+          "name": "Gemini Header Auth"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "// candidates[0].content.parts から inlineData.data(base64) を拾う\nconst resp = $json;\nconst parts = resp?.candidates?.[0]?.content?.parts || [];\nconst imgPart = parts.find(p => p && p.inlineData && p.inlineData.data);\nif (!imgPart) {\n  throw new Error('inlineData.data が見つかりません。レスポンス構造を確認してください。');\n}\n\nconst base64 = imgPart.inlineData.data;\nconst mimeType = imgPart.inlineData.mimeType || 'image/png';\n\n// 画像アップロード用\nreturn [{ json: { ...$items('1枚ずつ処理')[0].json, base64, mimeType } }];"
+        "jsCode": "// candidates[0].content.parts から inlineData.data(base64) を拾う\nconst resp = $json;\nconst parts = resp?.candidates?.[0]?.content?.parts || [];\nconst imgPart = parts.find(p => p && p.inlineData && p.inlineData.data);\nif (!imgPart) {\n  throw new Error('inlineData.data が見つかりません。レスポンス構造を確認してください。');\n}\n\nconst base64 = imgPart.inlineData.data;\nconst mimeType = imgPart.inlineData.mimeType || 'image/png';\n\n// 元ジョブ（Split in Batchesの現在item）\nconst job = $('1枚ずつ処理').item.json;\n\nreturn [{ json: { ...job, base64, mimeType } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -118,12 +130,12 @@
       "parameters": {
         "method": "POST",
         "url": "https://tokusearch.vercel.app/api/admin/columns/upload-image",
-        "authentication": "none",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "x-api-key", "value": "={{$env.N8N_API_KEY}}" }
+            { "name": "Content-Type", "value": "application/json" }
           ]
         },
         "sendBody": true,
@@ -135,7 +147,13 @@
       "typeVersion": 4.2,
       "position": [ 340, 200 ],
       "id": "upload",
-      "name": "画像アップロード"
+      "name": "画像アップロード",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLEASE_CREATE_N8N_API_KEY_AUTH",
+          "name": "N8N API Key Auth"
+        }
+      }
     },
     {
       "parameters": {
@@ -161,12 +179,12 @@
       "parameters": {
         "method": "POST",
         "url": "https://tokusearch.vercel.app/api/ingest/columns-images/apply",
-        "authentication": "none",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "x-api-key", "value": "={{$env.N8N_API_KEY}}" }
+            { "name": "Content-Type", "value": "application/json" }
           ]
         },
         "sendBody": true,
@@ -178,7 +196,13 @@
       "typeVersion": 4.2,
       "position": [ 1000, 200 ],
       "id": "apply",
-      "name": "DB反映（API）"
+      "name": "DB反映（API）",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLEASE_CREATE_N8N_API_KEY_AUTH",
+          "name": "N8N API Key Auth"
+        }
+      }
     }
   ],
   "connections": {

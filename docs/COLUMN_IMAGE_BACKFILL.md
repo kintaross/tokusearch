@@ -107,3 +107,22 @@
 
 運用の現実解として、`max_inline` を 2〜6 などに制限し、まずは毎日コツコツ埋めるのを推奨します。
 
+---
+
+## 6. n8n Cloud で `{{$env...}}` が使えない場合
+
+n8n（特にCloud環境）では、式内の `{{$env.VAR_NAME}}` 参照がセキュリティ上ブロックされることがあり、
+以下のようなエラーになります。
+
+- `access to env vars denied`
+
+この場合は **`$env` を使わず**、次のどちらかに切り替えてください。
+
+- **推奨**: Credentials（`Header Auth`）を作り、HTTPノードの認証に割り当てる
+  - `N8N API Key Auth`: Header Name=`x-api-key`, Value=`N8N_API_KEY`
+  - `Gemini Header Auth`: Header Name=`x-goog-api-key`, Value=`GEMINI_API_KEY`
+- **代替**: n8nの「Variables」機能が使えるなら `{{$vars.xxx}}` に置き換える
+
+本リポジトリの雛形ワークフロー（`n8n_workflow/columns-image-backfill-nanobanana-db.json`）は、
+**Credentials参照**で動くようにしてあります（`PLEASE_CREATE_...` を作成して割り当ててください）。
+
