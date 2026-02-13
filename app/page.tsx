@@ -34,6 +34,8 @@ export default async function HomePage({
 }) {
   const allDeals = await fetchDealsForPublic();
   const allColumns = await fetchColumnsFromSheet({ status: 'published' });
+  const todayNewDealsAll = getTodayNewDeals(allDeals, 0);
+  const activeCount = allDeals.filter(deal => deal.is_public && isActiveNow(deal.expiration)).length;
   
   // 検索パラメータの取得
   const search = typeof searchParams.search === 'string' ? searchParams.search : '';
@@ -95,7 +97,7 @@ export default async function HomePage({
   
   // 新着はコツコツ系を除外（コツコツは /kotsukotsu で表示）
   // 未絞り込み時は「新着のみ」をメイン表示にする（24時間以内・全件）
-  const todayNewDeals = isFiltered ? [] : getTodayNewDeals(allDeals, 0).filter((d) => !isKotsukotsuDeal(d));
+  const todayNewDeals = isFiltered ? [] : todayNewDealsAll.filter((d) => !isKotsukotsuDeal(d));
   const displayDeals = isFiltered ? filteredDeals : todayNewDeals;
 
   const sectionTitle = isFiltered 
@@ -309,13 +311,35 @@ export default async function HomePage({
       </section>
 
       {/* 統計セクション（静的） */}
-      <section className="bg-accent-brown text-white py-12 md:py-24 px-4 md:px-8 overflow-hidden relative">
+      <section className="bg-accent-brown text-white py-6 md:py-12 px-4 md:px-8 overflow-hidden relative">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -ml-32 -mb-32"></div>
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-2 gap-8 md:gap-12 text-center relative z-10">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-y-12 gap-x-8 md:gap-8 text-center relative z-10">
           <div className="space-y-2 md:space-y-3">
             <div className="text-3xl md:text-5xl font-bold tracking-tight">0<span className="text-primary">円</span></div>
             <div className="text-[10px] md:text-xs text-white/50 font-bold tracking-[0.2em] uppercase">Free to Use</div>
+          </div>
+          <div className="space-y-2 md:space-y-3">
+            <div className="text-3xl md:text-5xl font-bold tracking-tight">
+              {activeCount}<span className="text-primary">+</span>
+            </div>
+            <div className="text-[10px] md:text-xs text-white/50 font-bold tracking-[0.2em] uppercase">
+              Active Deals
+            </div>
+            <Link href="/ranking" className="inline-block mt-1 text-primary text-[10px] md:text-xs font-bold hover:text-white transition-colors">
+              View All <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+            </Link>
+          </div>
+          <div className="space-y-2 md:space-y-3">
+            <div className="text-3xl md:text-5xl font-bold tracking-tight">
+              {todayNewDealsAll.length}<span className="text-primary">件</span>
+            </div>
+            <div className="text-[10px] md:text-xs text-white/50 font-bold tracking-[0.2em] uppercase">
+              New Arrivals
+            </div>
+            <Link href="/shinchaku" className="inline-block mt-1 text-primary text-[10px] md:text-xs font-bold hover:text-white transition-colors">
+              View All <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+            </Link>
           </div>
           <div className="space-y-2 md:space-y-3">
             <div className="text-3xl md:text-5xl font-bold tracking-tight">2<span className="text-primary">回</span></div>
