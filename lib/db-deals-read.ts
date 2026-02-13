@@ -117,7 +117,7 @@ export async function fetchDealsFiltered(
       orderBy = 'ORDER BY created_at DESC NULLS LAST, id';
       break;
     case 'expiring':
-      orderBy = `ORDER BY CASE WHEN expiration ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN (expiration::date) ELSE '9999-12-31'::date END ASC NULLS LAST, id`;
+      orderBy = `ORDER BY CASE WHEN expiration::text ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN (expiration::text::date) ELSE '9999-12-31'::date END ASC NULLS LAST, id`;
       break;
     case 'discount_rate':
       orderBy = 'ORDER BY discount_rate DESC NULLS LAST, id';
@@ -130,7 +130,7 @@ export async function fetchDealsFiltered(
       break;
     case 'default':
     default:
-      orderBy = `ORDER BY CASE WHEN expiration ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN (expiration::date) ELSE '9999-12-31'::date END ASC NULLS LAST,
+      orderBy = `ORDER BY CASE WHEN expiration::text ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN (expiration::text::date) ELSE '9999-12-31'::date END ASC NULLS LAST,
         CASE priority WHEN 'A' THEN 1 WHEN 'B' THEN 2 ELSE 3 END,
         created_at DESC NULLS LAST, id`;
   }
