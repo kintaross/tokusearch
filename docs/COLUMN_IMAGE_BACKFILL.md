@@ -124,6 +124,7 @@ deals-workflow と同じ方式です。
 
 ### セットアップ手順
 1. ワークフローJSONをインポート
-2. `Schedule` ノードを **Active** にする（1日3回: 09:00 / 12:00 / 21:00）
-3. 追加の Credentials 設定は不要
+2. Vercel環境変数に `BLOB_READ_WRITE_TOKEN` を設定（画像保存先）
+3. `Schedule` ノードを **Active** にする（1日3回: 09:00 / 12:00 / 21:00）
+4. 追加の Credentials 設定は不要
 
