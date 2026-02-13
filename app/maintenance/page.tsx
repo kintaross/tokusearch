@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 
 type Countdown = {
   days: string
@@ -175,12 +174,6 @@ export default function MaintenancePage() {
           <p className="text-white/20 text-[10px] md:text-xs font-light tracking-wider">
             © {new Date().getFullYear()} TokuSearch.
           </p>
-          <Link
-            href="/login"
-            className="text-white/30 text-[10px] md:text-xs font-light tracking-wider hover:text-white/50 transition-colors underline"
-          >
-            管理者の方はログイン
-          </Link>
         </footer>
       </div>
     </div>
