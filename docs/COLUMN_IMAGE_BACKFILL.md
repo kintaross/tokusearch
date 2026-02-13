@@ -113,29 +113,17 @@ deals-workflow と同じシンプルな構成です。
 
 ---
 
-## 6. n8n Cloud で `{{$env...}}` が使えない場合
+## 6. 認証方式
 
-n8n（特にCloud環境）では、式内の `{{$env.VAR_NAME}}` 参照がセキュリティ上ブロックされることがあり、
-以下のようなエラーになります。
+本ワークフロー（`n8n_workflow/columns-image-backfill-nanobanana-db.json`）は、
+**すべてのHTTPノードで API Key をリテラル直書き**しており、n8n Credentials や `$env` は一切使いません。
+deals-workflow と同じ方式です。
 
-- `access to env vars denied`
+- TokuSearch側: `x-api-key` / `Authorization: Bearer` にリテラル値
+- Gemini（Nano Banana Pro）: `x-goog-api-key` にリテラル値
 
-この場合は **`$env` を使わず**、次のどちらかに切り替えてください。
-
-- **推奨**: Credentials（`Header Auth`）を作り、HTTPノードの認証に割り当てる（特にGemini）
-  - `Gemini Header Auth`: Header Name=`x-goog-api-key`, Value=`GEMINI_API_KEY`
-- **代替**: HTTPノードの `headerParameters` にキーをリテラルで直書きする（既存の `deals-workflow` と同じ方式）
-
-本リポジトリの雛形ワークフロー（`n8n_workflow/columns-image-backfill-nanobanana-db.json`）は、
-**TokuSearch側（`x-api-key` / `Authorization`）はリテラル直書き**で入れてあり、`$env` や n8n Credentials を要求しません。
-一方、**Gemini（Nano Banana Pro）だけは API Key が必要**なので、`Gemini Header Auth` を作って割り当ててください（または直書き）。
-
-### すぐ使える最小手順（Gemini Credentials）
-1. n8n → **Credentials** → **Create new** → **Header Auth**
-2. 以下を作成:
-   - **Name**: `Gemini Header Auth`
-     - Header Name: `x-goog-api-key`
-     - Header Value: （Gemini API Key）
-3. ワークフローを再読み込みして、`Nano Banana Pro 生成` に上記Credentialsを割り当て
-4. `Schedule` ノードを **Active** にする（1日3回）
+### セットアップ手順
+1. ワークフローJSONをインポート
+2. `Schedule` ノードを **Active** にする（1日3回: 09:00 / 12:00 / 21:00）
+3. 追加の Credentials 設定は不要
 
