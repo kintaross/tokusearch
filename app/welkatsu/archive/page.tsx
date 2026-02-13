@@ -20,7 +20,8 @@ export default function WelkatsuArchivePage() {
   // 月別のアーカイブ一覧を表示する
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="pt-20">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* ヘッダー */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">
@@ -85,6 +86,7 @@ export default function WelkatsuArchivePage() {
             <span>ウエル活攻略Tips・活用事例</span>
           </li>
         </ul>
+      </div>
       </div>
     </div>
   );

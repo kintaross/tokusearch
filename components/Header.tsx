@@ -7,8 +7,9 @@ import { Menu, X, User, LogOut, ChevronDown, ChevronUp } from 'lucide-react';
 
 const NAV_LINKS = [
   { href: '/', label: 'ホーム' },
-  { href: '/ranking', label: 'ショップ比較' },
-  { href: '/pickup', label: '還元率ランキング' },
+  { href: '/welkatsu', label: 'ウエル活' },
+  { href: '/kotsukotsu', label: 'コツコツポイ活' },
+  { href: '/pickup', label: '注目のお得情報' },
   { href: '/columns', label: '特集コラム' },
 ];
 
