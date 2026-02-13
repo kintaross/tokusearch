@@ -72,16 +72,20 @@
 
 ### 3.2 ノード構成（概要）
 
-1. Schedule Trigger（1日3回）
-2. HTTP Request（`GET /api/ingest/columns-images/next?limit=1&max_inline=6`）
-3. IF（itemsが0なら終了）
-4. Code（サムネ + 差し込みの「画像ジョブ配列」を作る）
-5. Split in Batches（1ジョブずつ）
-6. HTTP Request（Nano Banana Proで画像生成）
-7. Code（レスポンスから `inlineData.data` のbase64を抽出）
-8. HTTP Request（`POST /api/admin/columns/upload-image` で保存）
-9. Code（生成結果を集約し、`thumbnail_url` と `inline_images[]` を組み立て）
-10. HTTP Request（`POST /api/ingest/columns-images/apply`）
+1. **Schedule Trigger**（1日3回: 09:00 / 12:00 / 21:00）
+2. **次のコラム取得（API）** — `GET /api/ingest/columns-images/next?limit=1&max_inline=6`
+3. **対象あり？** — `count > 0` でなければ終了
+4. **画像ジョブ作成** — サムネ + 差し込みの「画像ジョブ配列」を作る
+5. **1枚ずつ処理**（Split in Batches, batchSize=1）
+6. **Nano Banana Pro 生成** — Gemini API で画像生成
+7. **Base64抽出** — レスポンスから `inlineData.data` の base64 を取得
+8. **画像アップロード** — `POST /api/admin/columns/upload-image` で保存しURLを取得
+9. **DB反映ペイロード作成** — thumbnail/inline に応じた apply 用ペイロードを構築
+10. **DB反映（API）** — `POST /api/ingest/columns-images/apply` で即座にDB更新
+11. → **1枚ずつ処理** に戻る（次の画像へ）
+
+**ポイント**: 1枚生成するたびに即座にDB反映するため、集約ノードや staticData は不要。
+deals-workflow と同じシンプルな構成です。
 
 ---
 
@@ -118,23 +122,20 @@ n8n（特にCloud環境）では、式内の `{{$env.VAR_NAME}}` 参照がセキ
 
 この場合は **`$env` を使わず**、次のどちらかに切り替えてください。
 
-- **推奨**: Credentials（`Header Auth`）を作り、HTTPノードの認証に割り当てる
-  - `N8N API Key Auth`: Header Name=`x-api-key`, Value=`N8N_API_KEY`
+- **推奨**: Credentials（`Header Auth`）を作り、HTTPノードの認証に割り当てる（特にGemini）
   - `Gemini Header Auth`: Header Name=`x-goog-api-key`, Value=`GEMINI_API_KEY`
-- **代替**: n8nの「Variables」機能が使えるなら `{{$vars.xxx}}` に置き換える
+- **代替**: HTTPノードの `headerParameters` にキーをリテラルで直書きする（既存の `deals-workflow` と同じ方式）
 
 本リポジトリの雛形ワークフロー（`n8n_workflow/columns-image-backfill-nanobanana-db.json`）は、
-**Credentials参照**で動くようにしてあります（`PLEASE_CREATE_...` を作成して割り当ててください）。
+**TokuSearch側（`x-api-key` / `Authorization`）はリテラル直書き**で入れてあり、`$env` や n8n Credentials を要求しません。
+一方、**Gemini（Nano Banana Pro）だけは API Key が必要**なので、`Gemini Header Auth` を作って割り当ててください（または直書き）。
 
-### すぐ使える最小手順（Credentials）
+### すぐ使える最小手順（Gemini Credentials）
 1. n8n → **Credentials** → **Create new** → **Header Auth**
 2. 以下を作成:
-   - **Name**: `N8N API Key Auth`
-     - Header Name: `x-api-key`
-     - Header Value: （Vercelに設定している `N8N_API_KEY` と同じ値）
    - **Name**: `Gemini Header Auth`
      - Header Name: `x-goog-api-key`
      - Header Value: （Gemini API Key）
-3. ワークフローを再読み込みして、赤い認証エラーのノードに上記Credentialsを割り当て
+3. ワークフローを再読み込みして、`Nano Banana Pro 生成` に上記Credentialsを割り当て
 4. `Schedule` ノードを **Active** にする（1日3回）
 

@@ -99,7 +99,8 @@
         "headerParameters": {
           "parameters": [
             { "name": "Content-Type", "value": "application/json" },
-            { "name": "x-api-key", "value": "={{ $env.N8N_API_KEY }}" }
+            { "name": "x-api-key", "value": "cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ" },
+            { "name": "Authorization", "value": "Bearer cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ" }
           ]
         },
         "sendBody": true,

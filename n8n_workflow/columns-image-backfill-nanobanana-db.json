@@ -13,7 +13,7 @@
       },
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [ -1200, 200 ],
+      "position": [-1200, 200],
       "id": "schedule",
       "name": "Schedule（1日3回）"
     },
@@ -21,27 +21,22 @@
       "parameters": {
         "method": "GET",
         "url": "https://tokusearch.vercel.app/api/ingest/columns-images/next?limit=1&max_inline=6",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-api-key", "value": "cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ" },
+            { "name": "Authorization", "value": "Bearer cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ" }
           ]
         },
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [ -980, 200 ],
+      "position": [-980, 200],
       "id": "get-next",
-      "name": "次のコラム取得（API）",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "PLEASE_CREATE_N8N_API_KEY_AUTH",
-          "name": "N8N API Key Auth"
-        }
-      }
+      "name": "次のコラム取得（API）"
     },
     {
       "parameters": {
@@ -60,17 +55,17 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [ -760, 200 ],
+      "position": [-760, 200],
       "id": "if-has-items",
       "name": "対象あり？"
     },
     {
       "parameters": {
-        "jsCode": "// APIレスポンスから最初の1記事を取り出し、画像ジョブ配列を作る\nconst item = ($json.items && $json.items[0]) ? $json.items[0] : null;\nif (!item) return [];\n\nconst columnId = item.id;\nconst slug = item.slug;\n\nconst jobs = [];\n\n// サムネ\nif (item.thumbnail?.needs_generation && item.thumbnail?.prompt) {\n  jobs.push({\n    kind: 'thumbnail',\n    columnId,\n    slug,\n    description: item.title,\n    prompt: item.thumbnail.prompt,\n  });\n}\n\n// 記事内\nconst inlineItems = Array.isArray(item.inline?.items) ? item.inline.items : [];\nfor (const it of inlineItems) {\n  jobs.push({\n    kind: 'inline',\n    columnId,\n    slug,\n    description: it.description,\n    prompt: it.prompt,\n  });\n}\n\nreturn jobs.map(j => ({ json: j }));"
+        "jsCode": "// APIレスポンスから最初の1記事を取り出し、画像ジョブ配列を作る\nconst item = ($json.items && $json.items[0]) ? $json.items[0] : null;\nif (!item) return [];\n\nconst columnId = item.id;\nconst slug = item.slug;\n\nconst jobs = [];\n\n// サムネ\nif (item.thumbnail && item.thumbnail.needs_generation && item.thumbnail.prompt) {\n  jobs.push({\n    kind: 'thumbnail',\n    columnId: columnId,\n    slug: slug,\n    description: item.title || '',\n    prompt: item.thumbnail.prompt\n  });\n}\n\n// 記事内画像\nconst inlineItems = (item.inline && Array.isArray(item.inline.items)) ? item.inline.items : [];\nfor (const it of inlineItems) {\n  jobs.push({\n    kind: 'inline',\n    columnId: columnId,\n    slug: slug,\n    description: it.description || '',\n    prompt: it.prompt || ''\n  });\n}\n\nif (jobs.length === 0) return [];\n\nreturn jobs.map(function(j) { return { json: j }; });"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [ -540, 200 ],
+      "position": [-540, 200],
       "id": "build-jobs",
       "name": "画像ジョブ作成"
     },
@@ -81,7 +76,7 @@
       },
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [ -320, 200 ],
+      "position": [-320, 200],
       "id": "split",
       "name": "1枚ずつ処理"
     },
@@ -106,7 +101,7 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [ -100, 200 ],
+      "position": [-100, 200],
       "id": "gen-image",
       "name": "Nano Banana Pro 生成",
       "credentials": {
@@ -118,11 +113,11 @@
     },
     {
       "parameters": {
-        "jsCode": "// candidates[0].content.parts から inlineData.data(base64) を拾う\nconst resp = $json;\nconst parts = resp?.candidates?.[0]?.content?.parts || [];\nconst imgPart = parts.find(p => p && p.inlineData && p.inlineData.data);\nif (!imgPart) {\n  throw new Error('inlineData.data が見つかりません。レスポンス構造を確認してください。');\n}\n\nconst base64 = imgPart.inlineData.data;\nconst mimeType = imgPart.inlineData.mimeType || 'image/png';\n\n// 直前ノード（Split in Batches）から流れてきたジョブ\nconst job = $input.item.json;\n\nreturn [{ json: { ...job, base64, mimeType } }];"
+        "jsCode": "// Nano Banana Pro のレスポンスから base64 画像を抽出\nconst resp = $json;\nconst parts = (resp && resp.candidates && resp.candidates[0] && resp.candidates[0].content && resp.candidates[0].content.parts) || [];\nvar imgPart = null;\nfor (var i = 0; i < parts.length; i++) {\n  if (parts[i] && parts[i].inlineData && parts[i].inlineData.data) {\n    imgPart = parts[i];\n    break;\n  }\n}\nif (!imgPart) {\n  throw new Error('inlineData.data が見つかりません。Gemini のレスポンス構造を確認してください。');\n}\n\nconst base64 = imgPart.inlineData.data;\nconst mimeType = imgPart.inlineData.mimeType || 'image/png';\n\n// 直前の SplitInBatches から流れてきたジョブ情報を取得\nconst prev = $input.item.json;\n\nreturn [{ json: {\n  kind: prev.kind || '',\n  columnId: prev.columnId || '',\n  slug: prev.slug || '',\n  description: prev.description || '',\n  base64: base64,\n  mimeType: mimeType\n} }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [ 120, 200 ],
+      "position": [120, 200],
       "id": "extract-base64",
       "name": "Base64抽出"
     },
@@ -130,61 +125,47 @@
       "parameters": {
         "method": "POST",
         "url": "https://tokusearch.vercel.app/api/admin/columns/upload-image",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-api-key", "value": "cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ" },
+            { "name": "Authorization", "value": "Bearer cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ" }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  image: $json.base64,\n  filename: ($json.kind + '-' + $json.columnId + '-' + Date.now() + '.png')\n} }}",
+        "jsonBody": "={{ {\n  image: $json.base64,\n  filename: $json.kind + '-' + $json.columnId + '-' + Date.now() + '.png'\n} }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [ 340, 200 ],
+      "position": [340, 200],
       "id": "upload",
-      "name": "画像アップロード",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "PLEASE_CREATE_N8N_API_KEY_AUTH",
-          "name": "N8N API Key Auth"
-        }
-      }
+      "name": "画像アップロード"
     },
     {
       "parameters": {
-        "jsCode": "// 生成済みURLを job に付与して返す（後段で集約）\nconst job = $items('Base64抽出')[0].json;\nconst url = $json.url;\nreturn [{ json: { ...job, url } }];"
+        "jsCode": "// アップロード結果のURLと元のジョブ情報を結合して apply 用ペイロードを作る\n// $json はアップロードAPIのレスポンス（{ success, url, filename }）\n// Base64抽出ノードの出力からジョブ情報を取得\nconst uploadResult = $json;\nconst job = $('Base64抽出').first().json;\n\nconst url = uploadResult.url || '';\nconst kind = job.kind || '';\nconst columnId = job.columnId || '';\nconst description = job.description || '';\n\n// 種類に応じて apply API のペイロードを構築\nvar payload = {};\nif (kind === 'thumbnail') {\n  payload = {\n    column_id: columnId,\n    thumbnail_url: url,\n    inline_images: []\n  };\n} else {\n  // inline\n  payload = {\n    column_id: columnId,\n    thumbnail_url: '',\n    inline_images: [{ description: description, url: url }]\n  };\n}\n\nreturn [{ json: payload }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [ 560, 200 ],
-      "id": "attach-url",
-      "name": "URL付与"
-    },
-    {
-      "parameters": {
-        "jsCode": "/*\nSplitInBatchesの各ループで集まった出力を最後にまとめて apply に送る。\nこのノードは “最後のバッチが終わった後に手動で接続” する想定の雛形です。\n実際には SplitInBatches の 'No Items Left' からこのノードに接続してください。\n*/\n\nconst all = $items('URL付与').map(i => i.json);\nif (all.length === 0) return [];\n\nconst columnId = all[0].columnId;\n\nlet thumbnailUrl = '';\nconst inline_images = [];\n\nfor (const x of all) {\n  if (x.kind === 'thumbnail') {\n    thumbnailUrl = x.url;\n  } else if (x.kind === 'inline') {\n    inline_images.push({ description: x.description, url: x.url });\n  }\n}\n\nreturn [{ json: { column_id: columnId, thumbnail_url: thumbnailUrl, inline_images } }];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [ 780, 200 ],
+      "position": [560, 200],
       "id": "build-apply",
-      "name": "反映用ボディ作成（要配線調整）"
+      "name": "DB反映ペイロード作成"
     },
     {
       "parameters": {
         "method": "POST",
         "url": "https://tokusearch.vercel.app/api/ingest/columns-images/apply",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "x-api-key", "value": "cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ" },
+            { "name": "Authorization", "value": "Bearer cXajM21jtiFiCYqrRtqOeQ3bcPLB5JJ5-Nr4lQTXTtQ" }
           ]
         },
         "sendBody": true,
@@ -194,15 +175,9 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [ 1000, 200 ],
+      "position": [780, 200],
       "id": "apply",
-      "name": "DB反映（API）",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "PLEASE_CREATE_N8N_API_KEY_AUTH",
-          "name": "N8N API Key Auth"
-        }
-      }
+      "name": "DB反映（API）"
     }
   ],
   "connections": {
@@ -210,16 +185,15 @@
     "次のコラム取得（API）": { "main": [[{ "node": "対象あり？", "type": "main", "index": 0 }]] },
     "対象あり？": { "main": [[{ "node": "画像ジョブ作成", "type": "main", "index": 0 }], []] },
     "画像ジョブ作成": { "main": [[{ "node": "1枚ずつ処理", "type": "main", "index": 0 }]] },
-    "1枚ずつ処理": { "main": [[{ "node": "Nano Banana Pro 生成", "type": "main", "index": 0 }], [{ "node": "反映用ボディ作成（要配線調整）", "type": "main", "index": 0 }]] },
+    "1枚ずつ処理": { "main": [[{ "node": "Nano Banana Pro 生成", "type": "main", "index": 0 }], []] },
     "Nano Banana Pro 生成": { "main": [[{ "node": "Base64抽出", "type": "main", "index": 0 }]] },
     "Base64抽出": { "main": [[{ "node": "画像アップロード", "type": "main", "index": 0 }]] },
-    "画像アップロード": { "main": [[{ "node": "URL付与", "type": "main", "index": 0 }]] },
-    "URL付与": { "main": [[{ "node": "1枚ずつ処理", "type": "main", "index": 0 }]] },
-    "反映用ボディ作成（要配線調整）": { "main": [[{ "node": "DB反映（API）", "type": "main", "index": 0 }]] }
+    "画像アップロード": { "main": [[{ "node": "DB反映ペイロード作成", "type": "main", "index": 0 }]] },
+    "DB反映ペイロード作成": { "main": [[{ "node": "DB反映（API）", "type": "main", "index": 0 }]] },
+    "DB反映（API）": { "main": [[{ "node": "1枚ずつ処理", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "pinData": {},
   "staticData": null,
   "tags": []
 }
-
