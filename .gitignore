@@ -61,5 +61,5 @@ Thumbs.db
 # debug outputs
 /debug/
 
-# n8n local/private workflow variants (contains literals/keys)
-/n8n_workflow/columns-image-backfill-nanobanana-db.json
+# n8n workflow exports (may contain API keys / credentials - do not commit)
+n8n_workflow/
