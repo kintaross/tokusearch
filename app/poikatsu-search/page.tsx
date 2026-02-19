@@ -96,18 +96,20 @@ function PoikatsuSearchContent() {
           addSearchHistory(trimmedKeyword, data.results.length);
           setSearchHistory(getSearchHistory());
           
-          // サーバー側（スプレッドシート）に保存（過去最高の追跡用）
+          // 閲覧履歴は localStorage で保存（サーバー保存APIは廃止済み）
           try {
-            await fetch('/api/poikatsu-save-viewed', {
+            const res = await fetch('/api/poikatsu-save-viewed', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ results: data.results }),
             });
-          } catch (err) {
-            console.error('案件の保存に失敗しました:', err);
-            // エラーが発生しても検索結果は表示する
+            if (res.status === 410) {
+              // 廃止済み。localStorage のみ運用で問題なし
+            } else if (!res.ok) {
+              console.warn('閲覧保存API応答:', res.status);
+            }
+          } catch (_) {
+            // ネットワークエラー時は無視（localStorage で十分）
           }
         }
       }

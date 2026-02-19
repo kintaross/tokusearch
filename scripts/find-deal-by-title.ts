@@ -3,7 +3,7 @@
  * 使用方法: npx ts-node scripts/find-deal-by-title.ts "記事タイトル"
  */
 
-import { fetchDealsFromSheet } from '../lib/sheets';
+import { fetchDealsForAdmin } from '../lib/deals-data';
 
 const searchTitle = process.argv[2];
 
@@ -16,7 +16,7 @@ if (!searchTitle) {
 async function findDealByTitle() {
   try {
     console.log(`🔍 検索中: "${searchTitle}"`);
-    const deals = await fetchDealsFromSheet();
+    const deals = await fetchDealsForAdmin();
     
     // 部分一致で検索
     const matches = deals.filter(deal => 
@@ -45,7 +45,7 @@ async function findDealByTitle() {
     
     if (matches.length === 1) {
       const deal = matches[0];
-      console.log('📝 この記事のMarkdownを更新するには、Google Sheetsの該当行の"detail"カラムを更新してください。');
+      console.log('📝 この記事を更新するには、管理画面の該当記事編集または API を使用してください。');
       console.log(`   記事ID: ${deal.id}`);
     }
     

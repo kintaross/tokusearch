@@ -8,7 +8,7 @@
 
 - **ターゲット**: お得情報・キャンペーン・ポイント還元に興味のある一般ユーザー
 - **提供価値**: 今日チェックすべきお得情報を10秒で把握できる日次ダッシュボード
-- **データソース**: Google スプレッドシート または PostgreSQL（環境変数で切替可能）
+- **データソース**: PostgreSQL（本番は DB 専用。過去の Sheets 運用は廃止済み）
 
 ### 1.2 技術スタック
 
@@ -18,7 +18,7 @@
 | 言語 | TypeScript |
 | スタイル | Tailwind CSS |
 | 認証 | NextAuth.js（管理画面用） |
-| データストア | PostgreSQL / Google Sheets（DEALS_DATA_SOURCE で切替） |
+| データストア | PostgreSQL（deals / columns / admin_users） |
 | デプロイ | Vercel 想定 |
 | 自動化 | n8n（データ収集・コラム生成・承認フロー） |
 
@@ -155,7 +155,7 @@
 | GET | `/api/deals` | お得一覧（公開のみ。検索・フィルタ・ページネーション） |
 | GET | `/api/deals/[id]` | お得1件取得 |
 | GET | `/api/poikatsu-search?q=` | ポイ活横断検索 |
-| POST | `/api/poikatsu-save-viewed` | ポイ活閲覧履歴保存（任意） |
+| POST | `/api/poikatsu-save-viewed` | 廃止（410）。閲覧履歴は localStorage のみ |
 | GET | `/api/poikatsu-redirect` | ポイ活アフィリエイトリダイレクト用 |
 | GET | `/api/column-requests` | コラムリクエスト一覧（公開用は必要に応じて） |
 | GET | `/api/image-proxy` | 画像プロキシ（外部画像の安全表示用） |

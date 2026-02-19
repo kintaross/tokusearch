@@ -11,9 +11,13 @@
 - **最新のGoogle Sheetsを xlsx でエクスポート**（例: `TokuSearch.xlsx`）
 - **DBに `scripts/db/schema.sql` を適用**
 - **バックフィル実行**（`scripts/db/backfill-from-xlsx.ts`）
-- **Vercel環境変数をDBに切替**（`DATABASE_URL`, `DEALS_DATA_SOURCE=db`, `COLUMNS_DATA_SOURCE=db`, `N8N_API_KEY`）
+- **Vercel環境変数をDBに切替**（`DATABASE_URL` 必須。`N8N_API_KEY` を n8n と一致させる）
 - **DB版n8nワークフローをimportして有効化**
 - **簡易動作確認 → Freeze解除**
+
+---
+
+**注意**: 本番コードは **DB 専用** です。deals / columns / 管理者認証はすべて PostgreSQL を参照します。`DEALS_DATA_SOURCE` や `COLUMNS_DATA_SOURCE` は使用されません。`DATABASE_URL` が必須です。
 
 ---
 
@@ -114,15 +118,14 @@ conflicts が **0でなくても即NGではありません**（重複が実デ�
 
 Vercelのプロジェクト環境変数に以下を設定します。
 
-- **`DATABASE_URL`**: Postgresの接続文字列
-- **`DEALS_DATA_SOURCE`**: `db`
-- **`COLUMNS_DATA_SOURCE`**: `db`
+- **`DATABASE_URL`**: Postgresの接続文字列（必須。deals / columns / admin_users はすべて DB 参照）
 - **`N8N_API_KEY`**: n8nと共有するAPIキー（ランダムな長めの文字列）
 
 補足:
 
 - `N8N_API_KEY` は **n8n側の `N8N_API_KEY` と完全一致**させます
 - 既に `N8N_INGEST_API_KEY` を使っている運用なら、どちらか片方で統一してください（コードは両方を見ます）
+- `DEALS_DATA_SOURCE` / `COLUMNS_DATA_SOURCE` は廃止済みで参照されません
 
 ### 6.2 デプロイ（環境変数反映）
 
@@ -175,10 +178,9 @@ Freeze解除前に最低限これだけ確認します。
 
 ### 10.1 アプリ側をSheetsへ戻す
 
-Vercel環境変数を戻してRedeployします。
+Vercel環境変数を戻してRedeployします。**コードは DB 専用のため、ロールバックするには以前のコミットに戻す必要があります。** そのうえで:
 
-- `DEALS_DATA_SOURCE`: `sheets`（または未設定）
-- `COLUMNS_DATA_SOURCE`: `sheets`（または未設定）
+- `DATABASE_URL` を外すと起動失敗するため、ロールバック時も一時的に旧 DB または復旧用 DB を指すようにする
 
 ### 10.2 n8n側をSheets版へ戻す
 

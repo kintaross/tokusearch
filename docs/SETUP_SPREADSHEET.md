@@ -1,5 +1,9 @@
 # Googleスプレッドシート設置ガイド
 
+**廃止注記**: 本番の実行時コードは **PostgreSQL 専用** に移行済みです。deals・columns・管理者認証はスプレッドシートを参照しません。このガイドは、過去の運用参考または xlsx エクスポート元としての Sheets 利用時にのみ参照してください。新規構築時は `docs/DB_CUTOVER_RUNBOOK.md` と `scripts/db/schema.sql` を利用してください。
+
+---
+
 このガイドでは、TokuSearchサイトで使用するGoogleスプレッドシートの作成から連携までの手順を説明します。
 
 ## 📋 手順概要
