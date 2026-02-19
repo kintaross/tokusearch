@@ -92,12 +92,30 @@ export async function getColumnBySlugFromDb(pool: Pool, slug: string): Promise<C
   return rows[0] ? rowToColumn(rows[0]) : null;
 }
 
+async function resolveUniqueSlug(pool: Pool, baseSlug: string): Promise<string> {
+  const { rows } = await pool.query(
+    `SELECT slug FROM columns WHERE slug = $1 OR slug LIKE $2`,
+    [baseSlug, `${baseSlug}-%`]
+  );
+  if (rows.length === 0) return baseSlug;
+
+  const existing = new Set(rows.map((r: any) => String(r.slug)));
+  if (!existing.has(baseSlug)) return baseSlug;
+
+  for (let i = 2; i < 1000; i++) {
+    const candidate = `${baseSlug}-${i}`;
+    if (!existing.has(candidate)) return candidate;
+  }
+  return `${baseSlug}-${Date.now()}`;
+}
+
 export async function createColumnInDb(
   pool: Pool,
   data: Omit<Column, 'id' | 'created_at' | 'updated_at'>
 ): Promise<Column> {
   const now = new Date().toISOString();
   const id = `col-${Date.now()}`;
+  const slug = await resolveUniqueSlug(pool, data.slug);
 
   const publishedAt = data.status === 'published' ? (data.published_at || now) : data.published_at || '';
 
@@ -119,7 +137,7 @@ export async function createColumnInDb(
     `,
     [
       id,
-      data.slug,
+      slug,
       data.title,
       data.description,
       data.content_markdown,
