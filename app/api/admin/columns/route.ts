@@ -6,6 +6,7 @@ import {
 } from '@/lib/columns';
 import { autoInsertImageMarkers } from '@/lib/column-image-markers';
 import { ADMIN_SESSION_COOKIE, verifyAdminSessionValue } from '@/lib/admin-session';
+import { getIngestApiKey } from '@/lib/ingest-auth';
 
 function getAdminSessionFromRequest(request: NextRequest) {
   const secret = process.env.ADMIN_SESSION_SECRET || process.env.NEXTAUTH_SECRET || '';
@@ -36,26 +37,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // 認証チェック: 管理者Cookie OR API Key（n8n用）
   const session = getAdminSessionFromRequest(request);
-  const apiKey = request.headers.get('x-api-key');
-  
-  // デバッグログ
-  console.log('🔑 認証デバッグ:');
-  console.log('  - Session:', session ? 'あり' : 'なし');
-  console.log('  - 受信APIキー:', apiKey || '(なし)');
-  console.log('  - 環境変数APIキー:', process.env.N8N_API_KEY ? `${process.env.N8N_API_KEY.substring(0, 8)}...` : '(未設定)');
-  console.log('  - 一致:', apiKey === process.env.N8N_API_KEY);
+  const apiKey = getIngestApiKey(request);
   
   // 認証チェック（NextAuth または N8N_API_KEY）
   // ※ ここは必ず厳密一致で検証する（誤って第三者が投稿できるのを防ぐ）
-  const expected = process.env.N8N_API_KEY || process.env.N8N_INGEST_API_KEY;
-  const apiKeyOk = !!expected && apiKey === expected;
+  const expected = (process.env.N8N_API_KEY ?? process.env.N8N_INGEST_API_KEY ?? '').trim();
+  const apiKeyOk = expected.length > 0 && apiKey === expected;
   const adminOk = !!session && (session.user.role === 'admin' || session.user.role === 'editor');
   if (!adminOk && !apiKeyOk) {
-    console.log('❌ 認証失敗: セッションなし、APIキー不一致');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  console.log('✅ 認証成功（セッションまたはAPIキー一致）');
 
   try {
     const body = await request.json();

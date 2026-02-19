@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { Readable } from 'stream';
+import { isIngestAuthorized } from '@/lib/ingest-auth';
 
 function cleanEnvValue(value: string | undefined): string {
   return String(value ?? '')
@@ -82,8 +83,7 @@ async function getOrCreateFolder(drive: any, folderName: string, parentId?: stri
 export async function POST(request: NextRequest) {
   try {
     // API Key認証
-    const apiKey = request.headers.get('x-api-key');
-    if (apiKey !== process.env.N8N_API_KEY) {
+    if (!isIngestAuthorized(request)) {
       return NextResponse.json(
         { error: '認証が必要です' },
         { status: 401 }
