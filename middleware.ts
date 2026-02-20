@@ -36,7 +36,7 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // Exclude Next internals, public assets, and API routes.
-    '/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|force-reload.html).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|force-reload.html|google2a688dc37dc48928.html).*)',
   ],
 }
 
