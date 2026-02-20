@@ -59,9 +59,19 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    const title = String(body?.title ?? '').trim();
+    const description = String(body?.description ?? '').trim();
+
+    if (!title) {
+      return NextResponse.json({ error: 'title is required' }, { status: 400 });
+    }
+
     // [IMAGE:] マーカーが無い記事には自動挿入
     // → 画像バックフィルワークフローがマーカーを検知して画像を生成する
-    let content_markdown: string = body.content_markdown || '';
+    let content_markdown: string = String(body?.content_markdown ?? '');
+    if (!content_markdown.trim()) {
+      return NextResponse.json({ error: 'content_markdown is required' }, { status: 400 });
+    }
     const autoMarkers = autoInsertImageMarkers(content_markdown);
     if (autoMarkers.inserted > 0) {
       content_markdown = autoMarkers.content_markdown;
@@ -71,12 +81,16 @@ export async function POST(request: NextRequest) {
     // マークダウンをHTMLに変換（簡易版、実際にはライブラリ使用推奨）
     const content_html = content_markdown;
 
-    const slug = body.slug || generateSlug(body.title);
+    const rawSlug = String(body?.slug ?? '').trim();
+    const slug = rawSlug || generateSlug(title);
+    if (!slug) {
+      return NextResponse.json({ error: 'slug could not be generated from title' }, { status: 400 });
+    }
 
     const newColumn = await createColumn({
       slug,
-      title: body.title || '',
-      description: body.description || '',
+      title,
+      description,
       content_markdown,
       content_html,
       category: body.category || 'その他',

@@ -93,20 +93,21 @@ export async function getColumnBySlugFromDb(pool: Pool, slug: string): Promise<C
 }
 
 async function resolveUniqueSlug(pool: Pool, baseSlug: string): Promise<string> {
+  const safeBase = String(baseSlug ?? '').trim() || `col-${Date.now()}`;
   const { rows } = await pool.query(
     `SELECT slug FROM columns WHERE slug = $1 OR slug LIKE $2`,
-    [baseSlug, `${baseSlug}-%`]
+    [safeBase, `${safeBase}-%`]
   );
-  if (rows.length === 0) return baseSlug;
+  if (rows.length === 0) return safeBase;
 
   const existing = new Set(rows.map((r: any) => String(r.slug)));
-  if (!existing.has(baseSlug)) return baseSlug;
+  if (!existing.has(safeBase)) return safeBase;
 
   for (let i = 2; i < 1000; i++) {
-    const candidate = `${baseSlug}-${i}`;
+    const candidate = `${safeBase}-${i}`;
     if (!existing.has(candidate)) return candidate;
   }
-  return `${baseSlug}-${Date.now()}`;
+  return `${safeBase}-${Date.now()}`;
 }
 
 export async function createColumnInDb(

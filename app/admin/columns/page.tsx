@@ -113,7 +113,7 @@ export default async function AdminColumnsPage() {
                             href={`/admin/columns/${column.id}/edit`}
                             className="font-medium text-brand-600 hover:text-brand-700 block"
                           >
-                            {column.title}
+                            {column.title || '(タイトル未設定)'}
                           </Link>
                           <div className="text-sm text-gray-500">
                             {column.slug}
@@ -184,7 +184,7 @@ export default async function AdminColumnsPage() {
                         href={`/admin/columns/${column.id}/edit`}
                         className="font-medium text-brand-600 hover:text-brand-700 truncate block"
                       >
-                        {column.title}
+                    {column.title || '(タイトル未設定)'}
                       </Link>
                     </div>
                     <p className="text-xs text-gray-500 truncate">{column.slug}</p>
