@@ -34,8 +34,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ["Quicksand", "Noto Sans JP", "sans-serif"],
-        sans: ["Quicksand", "Noto Sans JP", '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'Yu Gothic', 'YuGothic', 'sans-serif'],
+        display: ["var(--font-quicksand)", "var(--font-noto-sans-jp)", "sans-serif"],
+        sans: ["var(--font-quicksand)", "var(--font-noto-sans-jp)", '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'Yu Gothic', 'YuGothic', 'sans-serif'],
       },
       borderRadius: {
         DEFAULT: "1rem",

@@ -309,6 +309,57 @@ export function getTargetUserTypeLabel(targetUserType?: string): string {
 }
 
 /**
+ * ホーム画面用の集計を1パスで計算
+ */
+export function computeHomeStats(deals: Deal[]): {
+  todayNewDeals: Deal[];
+  activeCount: number;
+  endingSoonDeals: Deal[];
+} {
+  const now = new Date();
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const today = getTodayString();
+  const tomorrow = getTomorrowString();
+  const dayAfterTomorrow = getDayAfterTomorrowString();
+
+  const todayNewDeals: Deal[] = [];
+  let activeCount = 0;
+  const endingSoonCandidates: Deal[] = [];
+
+  for (const deal of deals) {
+    if (!deal.is_public) continue;
+
+    if (isActiveNow(deal.expiration)) activeCount++;
+
+    if (deal.created_at) {
+      const createdAt = new Date(deal.created_at);
+      if (createdAt >= twentyFourHoursAgo && createdAt <= now) {
+        todayNewDeals.push(deal);
+      }
+    }
+
+    if (
+      isExpiringOn(deal.expiration, today) ||
+      isExpiringOn(deal.expiration, tomorrow) ||
+      isExpiringOn(deal.expiration, dayAfterTomorrow)
+    ) {
+      endingSoonCandidates.push(deal);
+    }
+  }
+
+  todayNewDeals.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+
+  endingSoonCandidates.sort((a, b) => {
+    const dateA = new Date(a.expiration || '9999-12-31');
+    const dateB = new Date(b.expiration || '9999-12-31');
+    if (dateA.getTime() !== dateB.getTime()) return dateA.getTime() - dateB.getTime();
+    return b.score - a.score;
+  });
+
+  return { todayNewDeals, activeCount, endingSoonDeals: endingSoonCandidates.slice(0, 5) };
+}
+
+/**
  * 期限が日付形式（YYYY-MM-DD）かどうか
  * 常時・毎日・期間限定などは false
  */

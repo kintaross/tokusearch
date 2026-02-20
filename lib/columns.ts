@@ -14,7 +14,7 @@ import {
 } from '@/lib/columns-db';
 import { getCached, CACHE_TTL_PUBLIC_MS } from '@/lib/cache';
 
-// コラム一覧を取得
+// コラム一覧を取得（lightweight: content_markdown/html を除外）
 export async function fetchColumnsFromSheet(
   options?: {
     status?: ColumnStatus;
@@ -26,7 +26,7 @@ export async function fetchColumnsFromSheet(
   const wantPublished = options?.status === 'published' || options?.status === undefined;
   if (wantPublished) {
     const columns = await getCached('columns:published', CACHE_TTL_PUBLIC_MS, () =>
-      fetchColumnsFromDb(pool, { status: 'published' })
+      fetchColumnsFromDb(pool, { status: 'published', lightweight: true })
     );
     let result = columns;
     if (options?.category) result = result.filter((col) => col.category === options.category);
@@ -42,8 +42,10 @@ export async function getColumnBySlug(slug: string): Promise<Column | null> {
   const decodedSlug = decodeURIComponent(slug);
   const bySlug = await getColumnBySlugFromDb(pool, decodedSlug);
   if (bySlug) return bySlug;
-  const all = await fetchColumnsFromDb(pool, { status: 'published' });
-  return all.find((col) => generateSlug(col.title) === decodedSlug) || null;
+  const all = await fetchColumnsFromSheet({ status: 'published' });
+  const match = all.find((col) => generateSlug(col.title) === decodedSlug);
+  if (!match) return null;
+  return getColumnByIdFromDb(pool, match.id);
 }
 
 export async function getColumnById(id: string): Promise<Column | null> {

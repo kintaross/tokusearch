@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Metadata } from 'next';
@@ -12,16 +13,16 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import DealDetailMeActions from '@/components/DealDetailMeActions';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
-async function getDeal(id: string) {
+const getDeal = cache(async (id: string) => {
   try {
     return await fetchDealById(id, { includePrivate: false });
   } catch (error) {
     console.error('データ取得エラー:', error);
     return null;
   }
-}
+});
 
 export async function generateMetadata({
   params,

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 
 type ViewMode = 'grid' | 'list';
 
@@ -29,7 +29,7 @@ export function ViewModeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const setViewMode = (mode: ViewMode) => {
+  const setViewMode = useCallback((mode: ViewMode) => {
     setViewModeState(mode);
     try {
       if (typeof window !== 'undefined') {
@@ -38,10 +38,12 @@ export function ViewModeProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('ViewModeの保存エラー:', error);
     }
-  };
+  }, []);
+
+  const value = useMemo(() => ({ viewMode, setViewMode }), [viewMode, setViewMode]);
 
   return (
-    <ViewModeContext.Provider value={{ viewMode, setViewMode }}>
+    <ViewModeContext.Provider value={value}>
       {children}
     </ViewModeContext.Provider>
   );

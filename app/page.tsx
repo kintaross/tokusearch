@@ -4,16 +4,15 @@ import { Metadata } from 'next';
 import { fetchDealsForPublic } from '@/lib/deals-data';
 import { CategoryMain } from '@/types/deal';
 import {
-  getTodayNewDeals,
   isActiveNow,
   isKotsukotsuDeal,
-  getEndingSoonDeals,
   calculateRemainingDays,
+  computeHomeStats,
 } from '@/lib/home-utils';
 import { fetchColumnsFromSheet } from '@/lib/columns';
 import { Column } from '@/types/column';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: 'TokuSearch | 賢い選択、豊かな暮らし',
@@ -34,11 +33,11 @@ export default async function HomePage({
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  const allDeals = await fetchDealsForPublic();
-  const allColumns = await fetchColumnsFromSheet({ status: 'published' });
-  const todayNewDealsAll = getTodayNewDeals(allDeals, 0);
-  const activeCount = allDeals.filter(deal => deal.is_public && isActiveNow(deal.expiration)).length;
-  const endingSoonDeals = getEndingSoonDeals(allDeals);
+  const [allDeals, allColumns] = await Promise.all([
+    fetchDealsForPublic().catch(() => [] as Awaited<ReturnType<typeof fetchDealsForPublic>>),
+    fetchColumnsFromSheet({ status: 'published' }).catch(() => [] as Awaited<ReturnType<typeof fetchColumnsFromSheet>>),
+  ]);
+  const { todayNewDeals: todayNewDealsAll, activeCount, endingSoonDeals } = computeHomeStats(allDeals);
   
   // 検索パラメータの取得
   const search = typeof searchParams.search === 'string' ? searchParams.search : '';

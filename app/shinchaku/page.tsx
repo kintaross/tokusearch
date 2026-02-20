@@ -3,10 +3,10 @@ import DealCard from '@/components/DealCard';
 import { getTodayNewDeals } from '@/lib/home-utils';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default async function ShinchakuPage() {
-  const deals = await fetchDealsForPublic();
+  const deals = await fetchDealsForPublic().catch(() => [] as Awaited<ReturnType<typeof fetchDealsForPublic>>);
   
   // 過去24時間の新着を全件取得（limitなし）
   const newDeals = getTodayNewDeals(deals, 0);

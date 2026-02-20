@@ -2,7 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ['puppeteer-core', '@sparticuz/chromium'],
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
   images: {
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 86400,
     remotePatterns: [
       {
         protocol: 'https',

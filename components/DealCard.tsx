@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import Link from 'next/link';
 import { Clock, Calendar, Tag } from 'lucide-react';
 import { Deal } from '@/types/deal';
@@ -9,7 +10,7 @@ interface DealCardProps {
   compact?: boolean;
 }
 
-export default function DealCard({ deal, viewMode = 'grid', compact = false }: DealCardProps) {
+export default memo(function DealCard({ deal, viewMode = 'grid', compact = false }: DealCardProps) {
   if (viewMode === 'list') {
     return (
       <Link href={`/deals/${deal.id}`} className="block group">
@@ -111,4 +112,4 @@ export default function DealCard({ deal, viewMode = 'grid', compact = false }: D
       </article>
     </Link>
   );
-}
+})

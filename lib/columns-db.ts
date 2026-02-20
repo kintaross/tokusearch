@@ -24,7 +24,7 @@ function rowToColumn(r: any): Column {
 
 export async function fetchColumnsFromDb(
   pool: Pool,
-  options?: { status?: ColumnStatus; category?: string; featured?: boolean }
+  options?: { status?: ColumnStatus; category?: string; featured?: boolean; lightweight?: boolean }
 ): Promise<Column[]> {
   const where: string[] = [];
   const values: any[] = [];
@@ -43,11 +43,15 @@ export async function fetchColumnsFromDb(
     values.push(options.featured);
   }
 
+  const contentFields = options?.lightweight
+    ? `'' AS content_markdown, '' AS content_html,`
+    : `content_markdown, content_html,`;
+
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const { rows } = await pool.query(
     `
     SELECT
-      id, slug, title, description, content_markdown, content_html,
+      id, slug, title, description, ${contentFields}
       category, tags, thumbnail_url, author, status, is_featured, view_count,
       created_at, updated_at, published_at
     FROM columns

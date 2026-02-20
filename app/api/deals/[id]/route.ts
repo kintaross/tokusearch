@@ -3,7 +3,7 @@ import { fetchDealById, updateDealById } from '@/lib/deals-data';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export async function GET(
   request: NextRequest,

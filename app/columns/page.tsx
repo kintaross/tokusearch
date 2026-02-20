@@ -1,11 +1,12 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Metadata } from 'next';
-import { BookOpen, Lightbulb, TrendingUp, Award, Calendar, Eye, Sparkles, List, Send } from 'lucide-react';
+import { BookOpen, TrendingUp, Calendar, Eye, Sparkles, List } from 'lucide-react';
 import { fetchColumnsFromSheet, getAllCategories, paginateColumns } from '@/lib/columns';
 import { RequestButton } from '@/components/columns/RequestButton';
 import { Pagination } from '@/components/columns/Pagination';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: 'お得の基礎知識コラム | TokuSearch',
@@ -30,7 +31,10 @@ export default async function ColumnsPage({ searchParams }: PageProps) {
   const selectedCategory = searchParams.category;
   const currentPage = parseInt(searchParams.page || '1', 10);
   
-  let allColumns = await fetchColumnsFromSheet({ status: 'published' });
+  let [allColumns, allCategories] = await Promise.all([
+    fetchColumnsFromSheet({ status: 'published' }).catch(() => [] as Awaited<ReturnType<typeof fetchColumnsFromSheet>>),
+    getAllCategories().catch(() => [] as string[]),
+  ]);
   
   // タグでフィルタリング
   if (selectedTag) {
@@ -44,9 +48,6 @@ export default async function ColumnsPage({ searchParams }: PageProps) {
   if (selectedCategory) {
     allColumns = allColumns.filter(c => c.category === selectedCategory);
   }
-  
-  // 全カテゴリを取得
-  const allCategories = await getAllCategories();
   
   // カテゴリごとに分類
   const columnsByCategory: Record<string, typeof allColumns> = {};
@@ -222,12 +223,15 @@ export default async function ColumnsPage({ searchParams }: PageProps) {
                   >
                     {column.thumbnail_url && (
                       <div className="w-full h-48 relative overflow-hidden">
-                        <img
+                        <Image
                           src={column.thumbnail_url.includes('drive.google.com') 
                             ? `/api/image-proxy?url=${encodeURIComponent(column.thumbnail_url)}`
                             : column.thumbnail_url}
                           alt={column.title}
-                          className="w-full h-full object-cover"
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                          className="object-cover"
+                          unoptimized={!column.thumbnail_url.includes('drive.google.com')}
                         />
                       </div>
                     )}
@@ -291,13 +295,16 @@ export default async function ColumnsPage({ searchParams }: PageProps) {
                               {column.category}
                             </span>
                             {column.thumbnail_url && (
-                              <div className="w-16 h-16 rounded overflow-hidden flex-shrink-0">
-                                <img
+                              <div className="w-16 h-16 rounded overflow-hidden flex-shrink-0 relative">
+                                <Image
                                   src={column.thumbnail_url.includes('drive.google.com') 
                                     ? `/api/image-proxy?url=${encodeURIComponent(column.thumbnail_url)}`
                                     : column.thumbnail_url}
                                   alt={column.title}
-                                  className="w-full h-full object-cover"
+                                  fill
+                                  sizes="64px"
+                                  className="object-cover"
+                                  unoptimized={!column.thumbnail_url.includes('drive.google.com')}
                                 />
                               </div>
                             )}
@@ -351,12 +358,15 @@ export default async function ColumnsPage({ searchParams }: PageProps) {
                       >
                         {column.thumbnail_url && (
                           <div className="w-full h-48 relative overflow-hidden">
-                            <img
+                            <Image
                               src={column.thumbnail_url.includes('drive.google.com') 
                                 ? `/api/image-proxy?url=${encodeURIComponent(column.thumbnail_url)}`
                                 : column.thumbnail_url}
                               alt={column.title}
-                              className="w-full h-full object-cover"
+                              fill
+                              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                              className="object-cover"
+                              unoptimized={!column.thumbnail_url.includes('drive.google.com')}
                             />
                           </div>
                         )}
@@ -408,12 +418,15 @@ export default async function ColumnsPage({ searchParams }: PageProps) {
                             >
                               {column.thumbnail_url && (
                                 <div className="w-full h-48 relative overflow-hidden">
-                                  <img
+                                  <Image
                                     src={column.thumbnail_url.includes('drive.google.com') 
                                       ? `/api/image-proxy?url=${encodeURIComponent(column.thumbnail_url)}`
                                       : column.thumbnail_url}
                                     alt={column.title}
-                                    className="w-full h-full object-cover"
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                    className="object-cover"
+                                    unoptimized={!column.thumbnail_url.includes('drive.google.com')}
                                   />
                                 </div>
                               )}

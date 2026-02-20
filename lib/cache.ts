@@ -4,6 +4,20 @@
  */
 const cache = new Map<string, { data: unknown; expiresAt: number }>();
 
+const MAX_CACHE_ENTRIES = 50;
+
+function evictStale() {
+  if (cache.size <= MAX_CACHE_ENTRIES) return;
+  const now = Date.now();
+  for (const [k, v] of cache) {
+    if (v.expiresAt <= now) cache.delete(k);
+  }
+  if (cache.size <= MAX_CACHE_ENTRIES) return;
+  const sorted = [...cache.entries()].sort((a, b) => a[1].expiresAt - b[1].expiresAt);
+  const toRemove = sorted.slice(0, cache.size - MAX_CACHE_ENTRIES);
+  for (const [k] of toRemove) cache.delete(k);
+}
+
 export function getCached<T>(key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
   const entry = cache.get(key);
   if (entry && entry.expiresAt > Date.now()) {
@@ -11,6 +25,7 @@ export function getCached<T>(key: string, ttlMs: number, fetcher: () => Promise<
   }
   return fetcher().then((data) => {
     cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+    evictStale();
     return data;
   });
 }

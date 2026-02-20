@@ -1,7 +1,8 @@
+import { cache } from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Eye, Home, ChevronRight } from 'lucide-react';
+import { Calendar, Eye, Home, ChevronRight } from 'lucide-react';
 import { getColumnBySlug, incrementViewCount, getRelatedColumns, getPopularColumns, getAllCategories } from '@/lib/columns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -12,7 +13,7 @@ import { ColumnImage } from '@/components/columns/ColumnImage';
 import { RequestCTA } from '@/components/columns/RequestButton';
 import ShareButton from '@/components/ShareButton';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 type Props = {
   params: { slug: string };
@@ -130,8 +131,12 @@ function extractHeadings(markdown: string): Array<{ id: string; text: string }> 
   return headings;
 }
 
+const getCachedColumn = cache(async (slug: string) => {
+  return getColumnBySlug(slug);
+});
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const column = await getColumnBySlug(params.slug);
+  const column = await getCachedColumn(params.slug);
 
   if (!column || column.status !== 'published') {
     return {
@@ -155,7 +160,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ColumnDetailPage({ params }: Props) {
-  const column = await getColumnBySlug(params.slug);
+  const column = await getCachedColumn(params.slug);
 
   if (!column || column.status !== 'published') {
     notFound();
