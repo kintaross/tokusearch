@@ -1,6 +1,8 @@
 import { MetadataRoute } from 'next';
 import { fetchDealsForPublic } from '@/lib/deals-data';
 
+export const runtime = 'nodejs';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://tokusearch.vercel.app';
   

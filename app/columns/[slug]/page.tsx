@@ -16,7 +16,7 @@ import { ColumnStructuredData, BreadcrumbStructuredData } from '@/components/Str
 export const revalidate = 60;
 
 type Props = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 // マークダウンコンテンツを正規化する関数
@@ -132,7 +132,8 @@ function extractHeadings(markdown: string): Array<{ id: string; text: string }> 
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const column = await getColumnBySlug(params.slug);
+  const { slug } = await params;
+  const column = await getColumnBySlug(slug);
 
   if (!column || column.status !== 'published') {
     return {
@@ -156,7 +157,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ColumnDetailPage({ params }: Props) {
-  const column = await getColumnBySlug(params.slug);
+  const { slug } = await params;
+  const column = await getColumnBySlug(slug);
 
   if (!column || column.status !== 'published') {
     notFound();
