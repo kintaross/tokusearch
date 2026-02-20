@@ -1,4 +1,3 @@
-import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Metadata } from 'next';
@@ -15,14 +14,14 @@ import DealDetailMeActions from '@/components/DealDetailMeActions';
 
 export const revalidate = 60;
 
-const getDeal = cache(async (id: string) => {
+async function getDeal(id: string) {
   try {
     return await fetchDealById(id, { includePrivate: false });
   } catch (error) {
     console.error('データ取得エラー:', error);
     return null;
   }
-});
+}
 
 export async function generateMetadata({
   params,

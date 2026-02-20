@@ -1,4 +1,3 @@
-import { cache } from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -132,12 +131,8 @@ function extractHeadings(markdown: string): Array<{ id: string; text: string }> 
   return headings;
 }
 
-const getCachedColumn = cache(async (slug: string) => {
-  return getColumnBySlug(slug);
-});
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const column = await getCachedColumn(params.slug);
+  const column = await getColumnBySlug(params.slug);
 
   if (!column || column.status !== 'published') {
     return {
@@ -161,7 +156,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ColumnDetailPage({ params }: Props) {
-  const column = await getCachedColumn(params.slug);
+  const column = await getColumnBySlug(params.slug);
 
   if (!column || column.status !== 'published') {
     notFound();
