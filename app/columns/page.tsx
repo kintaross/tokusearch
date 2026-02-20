@@ -231,7 +231,7 @@ export default async function ColumnsPage({ searchParams }: PageProps) {
                           fill
                           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                           className="object-cover"
-                          unoptimized={!column.thumbnail_url.includes('drive.google.com')}
+                          unoptimized
                         />
                       </div>
                     )}
@@ -304,7 +304,7 @@ export default async function ColumnsPage({ searchParams }: PageProps) {
                                   fill
                                   sizes="64px"
                                   className="object-cover"
-                                  unoptimized={!column.thumbnail_url.includes('drive.google.com')}
+                                  unoptimized
                                 />
                               </div>
                             )}

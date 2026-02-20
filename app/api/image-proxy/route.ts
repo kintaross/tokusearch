@@ -3,17 +3,45 @@ import { NextRequest, NextResponse } from 'next/server';
 const ALLOWED_HOSTNAMES = new Set(['drive.google.com', 'lh3.googleusercontent.com']);
 const MAX_BYTES = 10 * 1024 * 1024; // 10MB
 
-/** Google Drive の共有リンクを画像取得用URLに正規化（/file/d/ID/view 等 → /uc?export=view&id=） */
-function normalizeDriveImageUrl(parsed: URL): string {
-  if (parsed.hostname !== 'drive.google.com') return parsed.toString();
+function getDriveFileId(parsed: URL): string | null {
+  if (parsed.hostname !== 'drive.google.com') return null;
   const path = parsed.pathname;
   const idFromPath = path.match(/^\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
   const idFromQuery = parsed.searchParams.get('id');
-  const fileId = idFromPath || idFromQuery;
-  if (fileId) {
-    return `https://drive.google.com/uc?export=view&id=${fileId}`;
-  }
-  return parsed.toString();
+  return idFromPath || idFromQuery;
+}
+
+function buildDriveCandidateUrls(fileId: string): string[] {
+  // Drive はリンク形式により HTML が返ることがあるため、複数の取り方で試す
+  return [
+    `https://drive.google.com/uc?export=view&id=${fileId}`,
+    `https://drive.google.com/uc?export=download&id=${fileId}`,
+    `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`,
+  ];
+}
+
+async function fetchImage(url: string): Promise<{ ok: true; buf: ArrayBuffer; contentType: string } | { ok: false; status: number }> {
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      Accept: 'image/avif,image/webp,image/*,*/*',
+      Referer: 'https://drive.google.com/',
+    },
+  });
+
+  if (!response.ok) return { ok: false, status: response.status };
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.toLowerCase().startsWith('image/')) return { ok: false, status: 400 };
+
+  const contentLengthHeader = response.headers.get('content-length');
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : NaN;
+  if (Number.isFinite(contentLength) && contentLength > MAX_BYTES) return { ok: false, status: 413 };
+
+  const buf = await response.arrayBuffer();
+  if (buf.byteLength > MAX_BYTES) return { ok: false, status: 413 };
+
+  return { ok: true, buf, contentType };
 }
 
 export async function GET(request: NextRequest) {
@@ -48,48 +76,26 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Hostname not allowed' }, { status: 400 });
   }
 
-  const fetchUrl = normalizeDriveImageUrl(url);
-
   try {
-    // 画像を取得
-    const response = await fetch(fetchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
-    });
+    const driveFileId = getDriveFileId(url);
+    const candidates = driveFileId ? buildDriveCandidateUrls(driveFileId) : [url.toString()];
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: 'Failed to fetch image' },
-        { status: response.status }
-      );
+    let lastStatus = 400;
+    for (const candidateUrl of candidates) {
+      const result = await fetchImage(candidateUrl);
+      if (result.ok) {
+        return new NextResponse(result.buf, {
+          status: 200,
+          headers: {
+            'Content-Type': result.contentType || 'image/jpeg',
+            'Cache-Control': 'public, max-age=31536000, immutable',
+          },
+        });
+      }
+      lastStatus = result.status;
     }
 
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.toLowerCase().startsWith('image/')) {
-      return NextResponse.json({ error: 'Response is not an image' }, { status: 400 });
-    }
-
-    const contentLengthHeader = response.headers.get('content-length');
-    const contentLength = contentLengthHeader ? Number(contentLengthHeader) : NaN;
-    if (Number.isFinite(contentLength) && contentLength > MAX_BYTES) {
-      return NextResponse.json({ error: 'Image too large' }, { status: 413 });
-    }
-
-    // 画像データを取得（サイズ上限を越えない前提）
-    const imageBuffer = await response.arrayBuffer();
-    if (imageBuffer.byteLength > MAX_BYTES) {
-      return NextResponse.json({ error: 'Image too large' }, { status: 413 });
-    }
-
-    // 画像を返す
-    return new NextResponse(imageBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': contentType || 'image/jpeg',
-        'Cache-Control': 'public, max-age=31536000, immutable',
-      },
-    });
+    return NextResponse.json({ error: 'Failed to fetch image' }, { status: lastStatus });
   } catch (error: any) {
     console.error('Image proxy error:', error);
     return NextResponse.json(
