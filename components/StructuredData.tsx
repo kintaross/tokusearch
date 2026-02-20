@@ -1,4 +1,5 @@
 import { Deal } from '@/types/deal';
+import { Column } from '@/types/column';
 
 export function WebsiteStructuredData() {
   const structuredData = {
@@ -117,6 +118,43 @@ export function BreadcrumbStructuredData({
       name: item.name,
       item: item.url,
     })),
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
+  );
+}
+
+export function ColumnStructuredData({ column }: { column: Column }) {
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: column.title,
+    description: column.description,
+    image: column.thumbnail_url ? [column.thumbnail_url] : [],
+    datePublished: column.published_at || column.created_at,
+    dateModified: column.updated_at || column.published_at || column.created_at,
+    author: {
+      '@type': 'Person',
+      name: column.author || 'TokuSearch',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'TokuSearch',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://tokusearch.vercel.app/favicon.svg',
+      },
+    },
+    articleSection: column.category,
+    keywords: column.tags ? column.tags : undefined,
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `https://tokusearch.vercel.app/columns/${column.slug}`,
+    },
   };
 
   return (

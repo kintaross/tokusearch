@@ -12,6 +12,7 @@ import { MarkdownContent } from '@/components/columns/MarkdownContent';
 import { ColumnImage } from '@/components/columns/ColumnImage';
 import { RequestCTA } from '@/components/columns/RequestButton';
 import ShareButton from '@/components/ShareButton';
+import { ColumnStructuredData, BreadcrumbStructuredData } from '@/components/StructuredData';
 
 export const revalidate = 60;
 
@@ -190,8 +191,17 @@ export default async function ColumnDetailPage({ params }: Props) {
     getAllCategories(),
   ]);
 
+  const breadcrumbItems = [
+    { name: 'ホーム', url: 'https://tokusearch.vercel.app' },
+    { name: 'コラム', url: 'https://tokusearch.vercel.app/columns' },
+    { name: column.category, url: `https://tokusearch.vercel.app/columns?category=${encodeURIComponent(column.category)}` },
+    { name: column.title, url: `https://tokusearch.vercel.app/columns/${column.slug}` },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <ColumnStructuredData column={column} />
+      <BreadcrumbStructuredData items={breadcrumbItems} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="lg:grid lg:grid-cols-4 lg:gap-8">
           {/* サイドナビ（PC: 左固定、SP: 記事下部に移動） */}
