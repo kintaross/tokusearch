@@ -3,6 +3,7 @@ import { getDbPool } from '@/lib/db';
 import { isIngestAuthorized } from '@/lib/ingest-auth';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 export async function GET(request: NextRequest) {
   try {

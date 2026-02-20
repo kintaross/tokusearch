@@ -5,6 +5,7 @@ import { isIngestAuthorized } from '@/lib/ingest-auth';
 import type { WelkatsuPlaybookContentJson } from '@/types/welkatsu-playbook';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 type IngestBody =
   | WelkatsuPlaybookIngestItem

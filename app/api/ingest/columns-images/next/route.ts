@@ -10,6 +10,7 @@ import {
 } from '@/lib/column-image-markers';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 function requireApiKey(request: NextRequest) {
   if (!isIngestAuthorized(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

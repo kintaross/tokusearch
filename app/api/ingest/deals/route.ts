@@ -5,6 +5,7 @@ import { isIngestAuthorized } from '@/lib/ingest-auth';
 import { Deal } from '@/types/deal';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 type IngestBody =
   | Deal
