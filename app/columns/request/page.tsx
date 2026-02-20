@@ -1,54 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Home, ChevronRight, Send, CheckCircle, AlertCircle, Lightbulb } from 'lucide-react';
-
-declare global {
-  interface Window {
-    grecaptcha: {
-      ready: (callback: () => void) => void;
-      execute: (siteKey: string, options: { action: string }) => Promise<string>;
-    };
-  }
-}
 
 export default function ColumnRequestPage() {
   const [requestText, setRequestText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
-  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
   const maxLength = 2000;
-
-  // reCAPTCHA v3 の読み込み
-  useEffect(() => {
-    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
-    if (!siteKey) {
-      setRecaptchaLoaded(true); // reCAPTCHAが設定されていない場合はスキップ
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      if (window.grecaptcha) {
-        window.grecaptcha.ready(() => {
-          setRecaptchaLoaded(true);
-        });
-      }
-    };
-    document.head.appendChild(script);
-
-    return () => {
-      const existingScript = document.querySelector(`script[src*="recaptcha"]`);
-      if (existingScript) {
-        document.head.removeChild(existingScript);
-      }
-    };
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,18 +25,6 @@ export default function ColumnRequestPage() {
     setErrorMessage('');
 
     try {
-      // reCAPTCHAトークンの取得（設定されている場合）
-      let recaptchaToken = '';
-      const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
-      if (siteKey && window.grecaptcha && recaptchaLoaded) {
-        try {
-          recaptchaToken = await window.grecaptcha.execute(siteKey, { action: 'column_request' });
-        } catch (error) {
-          console.error('reCAPTCHA execution error:', error);
-          // reCAPTCHAのエラーは無視して続行（サーバー側で検証）
-        }
-      }
-
       const response = await fetch('/api/column-requests', {
         method: 'POST',
         headers: {
@@ -83,7 +32,6 @@ export default function ColumnRequestPage() {
         },
         body: JSON.stringify({ 
           requestText: requestText.trim(),
-          recaptchaToken: recaptchaToken || undefined
         }),
       });
 

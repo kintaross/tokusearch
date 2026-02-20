@@ -15,7 +15,8 @@ function getSecret(): string {
 
 export async function requireAuth() {
   const secret = getSecret();
-  const value = cookies().get(ADMIN_SESSION_COOKIE)?.value || '';
+  const cookieStore = await cookies();
+  const value = cookieStore.get(ADMIN_SESSION_COOKIE)?.value || '';
   const session: AdminSession | null = verifyAdminSessionValue({ value, secret });
 
   if (!session) redirect('/login');
@@ -26,7 +27,8 @@ export async function requireAuth() {
 
 export async function getAdminSession() {
   const secret = getSecret();
-  const value = cookies().get(ADMIN_SESSION_COOKIE)?.value || '';
+  const cookieStore = await cookies();
+  const value = cookieStore.get(ADMIN_SESSION_COOKIE)?.value || '';
   return verifyAdminSessionValue({ value, secret });
 }
 

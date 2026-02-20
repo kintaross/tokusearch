@@ -110,8 +110,6 @@ Vercel環境変数に追加:
 
 ```env
 N8N_WEBHOOK_URL=https://your-n8n-instance/webhook/column-request
-RECAPTCHA_SITE_KEY=xxx      # オプション: スパム対策
-RECAPTCHA_SECRET_KEY=xxx    # オプション: スパム対策
 ```
 
 ---

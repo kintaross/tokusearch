@@ -206,7 +206,7 @@ TokuSearch APIへのアクセスに使用する認証情報です。Header Auth�
 **実行例**:
 ```
 PS C:\> -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 32 | ForEach-Object {[char]$_})
-a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
+<N8N_API_KEY>
 ```
 
 このキーをコピーしてください。
@@ -215,7 +215,7 @@ a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
 
 **ローカル環境（`.env.local`）**:
 ```env
-N8N_API_KEY=a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
+N8N_API_KEY=<N8N_API_KEY>
 ```
 
 **Vercel環境**:
@@ -235,7 +235,7 @@ vercel env add N8N_API_KEY production
 4. 以下を設定:
    ```
    Name: x-api-key
-   Value: a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
+   Value: <N8N_API_KEY>
    ```
    （上記で生成したAPI Keyを入力）
 5. 「Save」をクリック

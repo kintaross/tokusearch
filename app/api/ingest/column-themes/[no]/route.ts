@@ -7,12 +7,13 @@ export const maxDuration = 30;
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { no: string } }
+  context: { params: Promise<{ no: string }> }
 ) {
   try {
     if (!isIngestAuthorized(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const no = parseInt(params.no, 10);
+    const { no: noStr } = await context.params;
+    const no = parseInt(noStr, 10);
     if (!Number.isFinite(no)) {
       return NextResponse.json({ error: 'Invalid no' }, { status: 400 });
     }

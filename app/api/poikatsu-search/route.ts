@@ -14,12 +14,15 @@ async function searchDokotoku(keyword: string): Promise<PoikatsuSearchResponse> 
     // Vercel環境でのPuppeteer設定
     // Vercel環境の判定: VERCEL環境変数が存在するか、VERCEL_ENVが設定されているか
     const isVercel = !!process.env.VERCEL || !!process.env.VERCEL_ENV;
+    const debug = process.env.DEBUG_POIKATSU === '1';
     
-    console.log('🔧 Environment check:', {
-      VERCEL: process.env.VERCEL,
-      VERCEL_ENV: process.env.VERCEL_ENV,
-      isVercel: isVercel,
-    });
+    if (debug) {
+      console.log('🔧 Environment check:', {
+        VERCEL: process.env.VERCEL,
+        VERCEL_ENV: process.env.VERCEL_ENV,
+        isVercel: isVercel,
+      });
+    }
     
     let launchOptions: any = {
       headless: true,
@@ -27,20 +30,21 @@ async function searchDokotoku(keyword: string): Promise<PoikatsuSearchResponse> 
     
     if (isVercel) {
       // Vercel環境用の設定
-      console.log('🔧 Initializing Chromium for Vercel environment...');
+      if (debug) console.log('🔧 Initializing Chromium for Vercel environment...');
       
       let executablePath: string | undefined;
       
       try {
         // @sparticuz/chromiumはバイナリが含まれているため、引数なしで呼び出す
-        console.log('🔧 Calling chromium.executablePath()...');
+        if (debug) console.log('🔧 Calling chromium.executablePath()...');
         executablePath = await chromium.executablePath();
-        console.log('🔧 chromium.executablePath() returned:', {
-          type: typeof executablePath,
-          isString: typeof executablePath === 'string',
-          length: typeof executablePath === 'string' ? executablePath.length : 'N/A',
-          value: typeof executablePath === 'string' ? executablePath.substring(0, 100) : executablePath,
-        });
+        if (debug) {
+          console.log('🔧 chromium.executablePath() returned:', {
+            type: typeof executablePath,
+            isString: typeof executablePath === 'string',
+            length: typeof executablePath === 'string' ? executablePath.length : 'N/A',
+          });
+        }
         
         if (!executablePath) {
           console.error('❌ chromium.executablePath() returned undefined or null');
@@ -57,7 +61,7 @@ async function searchDokotoku(keyword: string): Promise<PoikatsuSearchResponse> 
           throw new Error('Chromium executable path is empty string');
         }
         
-        console.log('✅ Chromium executable path obtained successfully, length:', executablePath.length);
+        if (debug) console.log('✅ Chromium executable path obtained successfully, length:', executablePath.length);
       } catch (error) {
         console.error('❌ Failed to get Chromium executable path:', error);
         console.error('❌ Error details:', error instanceof Error ? error.message : String(error));
@@ -77,12 +81,12 @@ async function searchDokotoku(keyword: string): Promise<PoikatsuSearchResponse> 
         headless: true,
       };
       
-      console.log('✅ Launch options configured for Vercel, executablePath:', executablePath.substring(0, 50) + '...');
+      if (debug) console.log('✅ Launch options configured for Vercel');
     } else {
       // ローカル環境用の設定（検証環境で動作していた設定）
       // ローカル環境でもpuppeteer-coreを使用している場合、executablePathが必要
       // 通常のpuppeteerを使用する場合は不要だが、puppeteer-coreの場合は必須
-      console.log('🔧 Using local environment configuration');
+      if (debug) console.log('🔧 Using local environment configuration');
       
       // ローカル環境では通常のPuppeteerのパスを使用
       // 環境変数PUPPETEER_EXECUTABLE_PATHが設定されている場合はそれを使用
@@ -114,10 +118,12 @@ async function searchDokotoku(keyword: string): Promise<PoikatsuSearchResponse> 
       throw new Error('executablePath must be specified for puppeteer-core');
     }
     
-    console.log('🚀 Launching browser with options:', JSON.stringify({
-      ...launchOptions,
-      executablePath: launchOptions.executablePath ? launchOptions.executablePath.substring(0, 50) + '...' : 'NOT SET'
-    }, null, 2));
+    if (debug) {
+      console.log('🚀 Launching browser with options:', JSON.stringify({
+        ...launchOptions,
+        executablePath: launchOptions.executablePath ? String(launchOptions.executablePath).substring(0, 20) + '...' : 'NOT SET'
+      }, null, 2));
+    }
     
     browser = await puppeteer.launch(launchOptions);
 
@@ -132,8 +138,10 @@ async function searchDokotoku(keyword: string): Promise<PoikatsuSearchResponse> 
     // 「どこ得？」の検索URL: https://dokotoku.jp/?q=キーワード
     const searchUrl = `https://dokotoku.jp/?q=${encodeURIComponent(keyword)}`;
     
-    console.log(`🔍 Searching dokotoku.jp for: ${keyword}`);
-    console.log(`📍 URL: ${searchUrl}`);
+    if (debug) {
+      console.log(`🔍 Searching dokotoku.jp for: ${keyword}`);
+      console.log(`📍 URL: ${searchUrl}`);
+    }
     
     await page.goto(searchUrl, { 
       waitUntil: 'networkidle2',
@@ -142,29 +150,29 @@ async function searchDokotoku(keyword: string): Promise<PoikatsuSearchResponse> 
     
     // ページタイトルを確認（デバッグ用）
     const pageTitle = await page.title();
-    console.log(`📄 ページタイトル: ${pageTitle}`);
+    if (debug) console.log(`📄 ページタイトル: ${pageTitle}`);
     
     // 検索結果が表示されるまで待機
-    await page.waitForTimeout(2500);
+    await new Promise((r) => setTimeout(r, 2500));
     
     // 検索結果テーブルが表示されているか確認
     const tableExists = await page.$('table').then(el => el !== null).catch(() => false);
     if (!tableExists) {
-      console.log('⚠️ テーブルが見つかりません。検索フォームで検索を実行します...');
+      if (debug) console.log('⚠️ テーブルが見つかりません。検索フォームで検索を実行します...');
       
       // 検索フォームに入力して検索
       const searchInput = await page.$('input[name="q"], input.keyword');
       if (searchInput) {
         await searchInput.click({ clickCount: 3 }); // 既存のテキストを選択
         await searchInput.type(keyword);
-        await page.waitForTimeout(500);
+        await new Promise((r) => setTimeout(r, 500));
         
         // 検索ボタンをクリック
         const searchButton = await page.$('input[type="submit"], input.submit');
         if (searchButton) {
           await searchButton.click();
           await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 });
-          await page.waitForTimeout(2500);
+          await new Promise((r) => setTimeout(r, 2500));
         }
       }
     }
@@ -173,45 +181,45 @@ async function searchDokotoku(keyword: string): Promise<PoikatsuSearchResponse> 
     const html = await page.content();
     const $ = cheerio.load(html);
     
-    // デバッグ用: HTMLを一時的に保存
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const debugDir = path.join(process.cwd(), 'debug');
-      if (!fs.existsSync(debugDir)) {
-        fs.mkdirSync(debugDir, { recursive: true });
+    // デバッグ用（本番では抑制）
+    if (debug && !isVercel) {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const debugDir = path.join(process.cwd(), 'debug');
+        if (!fs.existsSync(debugDir)) {
+          fs.mkdirSync(debugDir, { recursive: true });
+        }
+        const debugFile = path.join(debugDir, `dokotoku-${Date.now()}.html`);
+        fs.writeFileSync(debugFile, html, 'utf-8');
+        console.log(`💾 HTMLを保存しました: ${debugFile}`);
+      } catch (e) {
+        console.log('⚠️ HTML保存に失敗:', e);
       }
-      const debugFile = path.join(debugDir, `dokotoku-${Date.now()}.html`);
-      fs.writeFileSync(debugFile, html, 'utf-8');
-      console.log(`💾 HTMLを保存しました: ${debugFile}`);
-    } catch (e) {
-      console.log('⚠️ HTML保存に失敗:', e);
-    }
-    
-    // ページの構造を詳細に確認
-    console.log('🔍 ページ構造の詳細分析:');
-    console.log(`  - テーブル数: ${$('table').length}`);
-    console.log(`  - tr数: ${$('tr').length}`);
-    console.log(`  - td数: ${$('td').length}`);
-    console.log(`  - リンク数: ${$('a').length}`);
-    
-    // テーブルの最初の数行を詳細に出力
-    $('table').each((tableIndex, table) => {
-      if (tableIndex === 0) {
-        console.log(`\n📊 最初のテーブルの構造:`);
-        $(table).find('tr').slice(0, 5).each((rowIndex, row) => {
-          const cells = $(row).find('td, th').map((_, cell) => {
-            const text = $(cell).text().trim();
-            const html = $(cell).html()?.substring(0, 100) || '';
-            return { text, html };
-          }).get();
-          console.log(`  行${rowIndex + 1}: ${cells.length}列`);
-          cells.forEach((cell, i) => {
-            console.log(`    列${i + 1}: "${cell.text.substring(0, 50)}"`);
+
+      console.log('🔍 ページ構造の詳細分析:');
+      console.log(`  - テーブル数: ${$('table').length}`);
+      console.log(`  - tr数: ${$('tr').length}`);
+      console.log(`  - td数: ${$('td').length}`);
+      console.log(`  - リンク数: ${$('a').length}`);
+
+      $('table').each((tableIndex, table) => {
+        if (tableIndex === 0) {
+          console.log(`\n📊 最初のテーブルの構造:`);
+          $(table).find('tr').slice(0, 5).each((rowIndex, row) => {
+            const cells = $(row).find('td, th').map((_, cell) => {
+              const text = $(cell).text().trim();
+              const html = $(cell).html()?.substring(0, 100) || '';
+              return { text, html };
+            }).get();
+            console.log(`  行${rowIndex + 1}: ${cells.length}列`);
+            cells.forEach((cell, i) => {
+              console.log(`    列${i + 1}: "${cell.text.substring(0, 50)}"`);
+            });
           });
-        });
-      }
-    });
+        }
+      });
+    }
     
     const results: PoikatsuSearchResult[] = [];
     
@@ -299,11 +307,11 @@ async function searchDokotoku(keyword: string): Promise<PoikatsuSearchResponse> 
       }
     });
     
-    console.log(`\n✅ ${results.length}件の検索結果を取得しました`);
+    if (debug) console.log(`\n✅ ${results.length}件の検索結果を取得しました`);
     
     // テーブル形式で見つからない場合、別の構造を試す
     if (results.length === 0) {
-      console.log('⚠️ テーブル形式で結果が見つかりません。別の構造を試します...');
+      if (debug) console.log('⚠️ テーブル形式で結果が見つかりません。別の構造を試します...');
       
       // リスト形式やdiv形式を試す
       $('li, div[class*="item"], div[class*="result"], [class*="card"]').each((i, elem) => {
@@ -346,7 +354,7 @@ async function searchDokotoku(keyword: string): Promise<PoikatsuSearchResponse> 
     
     // デバッグ用: HTMLの一部をログ出力
     if (results.length === 0) {
-      console.log('⚠️ 検索結果が見つかりませんでした。');
+      if (debug) console.log('⚠️ 検索結果が見つかりませんでした。');
       
       // テーブル要素の存在確認
       const tableCount = $('table').length;
@@ -354,16 +362,16 @@ async function searchDokotoku(keyword: string): Promise<PoikatsuSearchResponse> 
       const tdCount = $('td').length;
       const linkCount = $('a').length;
       const divCount = $('div').length;
-      console.log(`📊 HTML構造: table=${tableCount}, tr=${trCount}, td=${tdCount}, a=${linkCount}, div=${divCount}`);
+      if (debug) console.log(`📊 HTML構造: table=${tableCount}, tr=${trCount}, td=${tdCount}, a=${linkCount}, div=${divCount}`);
       
       // テーブルの最初の数行を確認
       if (tableCount > 0) {
         const $firstTable = $('table').first();
         const firstRows = $firstTable.find('tr').slice(0, 3);
-        console.log('📋 テーブルの最初の3行:');
+        if (debug) console.log('📋 テーブルの最初の3行:');
         firstRows.each((i, row) => {
           const cells = $(row).find('td, th').map((_, cell) => $(cell).text().trim()).get();
-          console.log(`  行${i + 1}:`, cells);
+          if (debug) console.log(`  行${i + 1}:`, cells);
         });
       }
       
@@ -377,22 +385,22 @@ async function searchDokotoku(keyword: string): Promise<PoikatsuSearchResponse> 
           }
         }
       });
-      console.log('📋 主要なクラス名（最初の15個）:', classNames.slice(0, 15));
+      if (debug) console.log('📋 主要なクラス名（最初の15個）:', classNames.slice(0, 15));
       
       // 検索結果らしき要素を探す
       const possibleResults = $('div, tr, li').filter((i, elem) => {
         const text = $(elem).text();
         return text.includes('円') && text.length > 10 && text.length < 500;
       });
-      console.log(`🔍 検索結果らしき要素: ${possibleResults.length}件`);
+      if (debug) console.log(`🔍 検索結果らしき要素: ${possibleResults.length}件`);
       if (possibleResults.length > 0) {
-        console.log('📄 最初の要素のHTML:', $(possibleResults[0]).html()?.substring(0, 500));
+        if (debug) console.log('📄 最初の要素のHTML:', $(possibleResults[0]).html()?.substring(0, 500));
       }
     } else {
-      console.log(`✅ ${results.length}件の検索結果を取得しました`);
+      if (debug) console.log(`✅ ${results.length}件の検索結果を取得しました`);
       // 最初の3件をログ出力
       results.slice(0, 3).forEach((r, i) => {
-        console.log(`  結果${i + 1}: ${r.site} - ${r.reward} - ${r.title.substring(0, 50)}...`);
+        if (debug) console.log(`  結果${i + 1}: ${r.site} - ${r.reward} - ${r.title.substring(0, 50)}...`);
       });
     }
     

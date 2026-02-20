@@ -78,7 +78,7 @@
 
 **`.env.local`**:
 ```env
-N8N_API_KEY=生成されたキー
+N8N_API_KEY=<N8N_API_KEY>
 ```
 
 **Vercel**:
@@ -92,7 +92,7 @@ vercel env add N8N_API_KEY production
 Credentials → Create New → Header Auth
 Name: N8N API Key Auth
 Header Name: x-api-key
-Header Value: 生成されたキー
+Header Value: <N8N_API_KEY>
 ```
 
 #### 3-4. ノードに設定

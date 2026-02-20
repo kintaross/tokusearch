@@ -4,7 +4,7 @@ import DealCard from '@/components/DealCard'
 import { fetchDealsForPublic } from '@/lib/deals-data'
 import { Deal } from '@/types/deal'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'ランキング | TokuSearch - いま注目のお得ランキング',

@@ -61,7 +61,7 @@
 ```
 Name: TokuSearch API Key
 Header Name: x-api-key
-Header Value: xMQKbeidhj97S04kGoOpsmvnlBR1WIcZ
+Header Value: <N8N_API_KEY>
 ```
 
 #### Step 3: 保存
@@ -152,7 +152,7 @@ Header Value: xMQKbeidhj97S04kGoOpsmvnlBR1WIcZ
 **対策**:
 1. 認証情報「TokuSearch API Key」を確認
 2. Header Name: `x-api-key`（正確に）
-3. Header Value: `xMQKbeidhj97S04kGoOpsmvnlBR1WIcZ`（正確に）
+3. Header Value: `<N8N_API_KEY>`（アプリ側と一致する値）
 4. 認証情報を再作成
 
 ---

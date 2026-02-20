@@ -1,5 +1,11 @@
+$apiKey = $env:N8N_INGEST_API_KEY
+if (-not $apiKey) { $apiKey = $env:N8N_API_KEY }
+if (-not $apiKey) {
+    throw "APIキーが未設定です。`$env:N8N_INGEST_API_KEY または `$env:N8N_API_KEY を設定してください。"
+}
+
 $headers = @{
-    "x-api-key" = "xMQKbeidhj97S04kGoOpsmvnlBR1WIcZ"
+    "x-api-key" = $apiKey
     "Content-Type" = "application/json"
 }
 

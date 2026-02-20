@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const session = await getSessionForMe();
   if (!session) {
@@ -19,7 +19,8 @@ export async function PUT(
     if (typeof body.name === 'string') data.name = body.name;
     if (body.query_json && typeof body.query_json === 'object') data.query_json = body.query_json;
     const pool = getDbPool();
-    const ok = await dbMe.updateSavedSearch(pool, session.id, params.id, data);
+    const { id } = await context.params;
+    const ok = await dbMe.updateSavedSearch(pool, session.id, id, data);
     if (!ok) {
       return NextResponse.json({ error: '見つかりません' }, { status: 404 });
     }
@@ -32,7 +33,7 @@ export async function PUT(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const session = await getSessionForMe();
   if (!session) {
@@ -40,7 +41,8 @@ export async function DELETE(
   }
   try {
     const pool = getDbPool();
-    const ok = await dbMe.deleteSavedSearch(pool, session.id, params.id);
+    const { id } = await context.params;
+    const ok = await dbMe.deleteSavedSearch(pool, session.id, id);
     if (!ok) {
       return NextResponse.json({ error: '見つかりません' }, { status: 404 });
     }

@@ -5,7 +5,7 @@ import { fetchColumnsFromSheet, getAllCategories, paginateColumns } from '@/lib/
 import { RequestButton } from '@/components/columns/RequestButton';
 import { Pagination } from '@/components/columns/Pagination';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'お得の基礎知識コラム | TokuSearch',

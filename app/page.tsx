@@ -13,7 +13,7 @@ import {
 import { fetchColumnsFromSheet } from '@/lib/columns';
 import { Column } from '@/types/column';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'TokuSearch | 賢い選択、豊かな暮らし',

@@ -24,7 +24,8 @@ export async function POST(request: Request) {
     }
 
     const value = createAdminSessionValue({ user, secret });
-    cookies().set({
+    const cookieStore = await cookies();
+    cookieStore.set({
       name: ADMIN_SESSION_COOKIE,
       value,
       httpOnly: true,

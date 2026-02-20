@@ -78,13 +78,13 @@
 -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 32 | ForEach-Object {[char]$_})
 ```
 
-**例**: `a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g`
+**例**: `<N8N_API_KEY>`
 
 #### 3-2: 環境変数に追加
 
 **`.env.local`**:
 ```env
-N8N_API_KEY=a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
+N8N_API_KEY=<N8N_API_KEY>
 ```
 
 **Vercel**:
@@ -98,7 +98,7 @@ vercel env add N8N_API_KEY production
 n8n → Credentials → Create New → Header Auth
 Name: N8N API Key Auth
 Header Name: x-api-key
-Header Value: a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
+Header Value: <N8N_API_KEY>
 ```
 
 #### 3-4: ノードに設定

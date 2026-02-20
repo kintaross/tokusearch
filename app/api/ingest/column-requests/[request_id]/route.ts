@@ -7,12 +7,13 @@ export const maxDuration = 30;
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { request_id: string } }
+  context: { params: Promise<{ request_id: string }> }
 ) {
   try {
     if (!isIngestAuthorized(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const requestId = decodeURIComponent(params.request_id);
+    const { request_id } = await context.params;
+    const requestId = decodeURIComponent(request_id);
     const body = await request.json();
 
     const fields: Array<{ k: string; v: any }> = [];

@@ -30,7 +30,7 @@ GOOGLE_SHEETS_SPREADSHEET_ID=your-spreadsheet-id
 GOOGLE_SERVICE_ACCOUNT_KEY=your-service-account-json
 
 # 新規追加（n8n用API Key）
-N8N_API_KEY=your-random-secure-key-here-min-32-chars
+N8N_API_KEY=<N8N_API_KEY>
 ```
 
 **API Keyの生成方法**:

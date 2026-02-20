@@ -6,7 +6,7 @@ import { AreaTypeBadge, TargetUserTypeBadge, CategoryBadge } from '@/components/
 import { Star, Sparkles, Eye } from 'lucide-react';
 import TopViewedDeals from '@/components/TopViewedDeals';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'ピックアップ | TokuSearch - 今日の注目お得',

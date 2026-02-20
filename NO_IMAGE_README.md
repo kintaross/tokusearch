@@ -42,13 +42,13 @@ n8n → + → Import from File → column-workflow-no-image.json
 
 # 環境変数に追加
 # .env.local
-N8N_API_KEY=生成されたキー
+N8N_API_KEY=<N8N_API_KEY>
 
 # n8nで認証情報作成
 Credentials → Header Auth
 Name: N8N API Key Auth
 Header Name: x-api-key
-Header Value: 生成されたキー
+Header Value: <N8N_API_KEY>
 ```
 
 ### 3. テスト実行（1分）

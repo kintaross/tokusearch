@@ -59,7 +59,7 @@ TokuSearch API用の認証情報です。
 
 **実行例**:
 ```
-a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
+<N8N_API_KEY>
 ```
 
 このキーをコピーしてください。
@@ -68,7 +68,7 @@ a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
 
 **ローカル（`.env.local`）**:
 ```env
-N8N_API_KEY=a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
+N8N_API_KEY=<N8N_API_KEY>
 ```
 
 **Vercel**:
@@ -85,7 +85,7 @@ vercel env add N8N_API_KEY production
    ```
    Name: N8N API Key Auth
    Header Name: x-api-key
-   Header Value: a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
+   Header Value: <N8N_API_KEY>
    ```
    （上記で生成したAPI Key）
 

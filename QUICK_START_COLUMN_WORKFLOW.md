@@ -36,7 +36,7 @@
 
 **実行例**:
 ```
-a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
+<N8N_API_KEY>
 ```
 
 このキーをコピーして、メモ帳に保存してください。
@@ -49,7 +49,7 @@ a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
 
 `.env.local`に追加:
 ```env
-N8N_API_KEY=a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
+N8N_API_KEY=<N8N_API_KEY>
 ```
 
 #### Vercel環境
@@ -64,7 +64,7 @@ vercel env add N8N_API_KEY production
 1. Settings → Environment Variables
 2. 「Add」をクリック
 3. Name: N8N_API_KEY
-4. Value: a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
+4. Value: <N8N_API_KEY>
 5. Environment: Production
 6. Save
 ```
@@ -120,7 +120,7 @@ vercel env add N8N_API_KEY production
    ```
    Name: N8N API Key Auth
    Header Name: x-api-key
-   Header Value: a3Kf8xZq9TyU2pL5nW7mC4vB6jH1sD0g
+   Header Value: <N8N_API_KEY>
    ```
    （ステップ1で生成したキー）
 

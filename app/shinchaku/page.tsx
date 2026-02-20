@@ -3,7 +3,7 @@ import DealCard from '@/components/DealCard';
 import { getTodayNewDeals } from '@/lib/home-utils';
 import Link from 'next/link';
 
-export const revalidate = 600; // 10分ごとに再検証
+export const dynamic = 'force-dynamic';
 
 export default async function ShinchakuPage() {
   const deals = await fetchDealsForPublic();

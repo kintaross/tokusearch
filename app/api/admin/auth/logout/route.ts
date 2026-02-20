@@ -3,7 +3,8 @@ import { cookies } from 'next/headers';
 import { ADMIN_SESSION_COOKIE } from '@/lib/admin-session';
 
 export async function POST() {
-  cookies().set({
+  const cookieStore = await cookies();
+  cookieStore.set({
     name: ADMIN_SESSION_COOKIE,
     value: '',
     httpOnly: true,

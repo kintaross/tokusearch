@@ -6,13 +6,11 @@
 
 1. **コラムリクエストページ** (`/columns/request`)
    - ユーザーフレンドリーなフォーム
-   - reCAPTCHA v3 対応（オプション）
    - エラーハンドリング完備
    - レスポンシブデザイン
 
 2. **APIエンドポイント** (`/api/column-requests`)
    - リクエストバリデーション
-   - reCAPTCHA検証（オプション）
    - n8n Webhookへの転送
    - エラーハンドリング
 
@@ -67,8 +65,6 @@
 ```bash
 # 1. 環境変数の設定確認
 # N8N_WEBHOOK_URL
-# RECAPTCHA_SECRET_KEY (オプション)
-# NEXT_PUBLIC_RECAPTCHA_SITE_KEY (オプション)
 
 # 2. ビルドテスト
 npm run build
@@ -111,9 +107,8 @@ vercel --prod
 ## 注意事項
 
 1. **環境変数**: 本番デプロイ前に必ず設定を確認
-2. **reCAPTCHA**: 設定されていなくても動作するが、スパム対策のため推奨
-3. **n8nワークフロー**: フロントエンドはリリース可能だが、n8nワークフローの動作確認が必要
-4. **Webhook URL**: n8nのWebhook URLが正しく設定されているか確認
+2. **n8nワークフロー**: フロントエンドはリリース可能だが、n8nワークフローの動作確認が必要
+3. **Webhook URL**: n8nのWebhook URLが正しく設定されているか確認
 
 
 

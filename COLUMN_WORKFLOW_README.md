@@ -74,7 +74,7 @@ tokuSearch/
 **環境変数に追加**:
 ```env
 # .env.local と Vercel に追加
-N8N_API_KEY=生成されたキー
+N8N_API_KEY=<N8N_API_KEY>
 ```
 
 #### ステップ3: テスト実行

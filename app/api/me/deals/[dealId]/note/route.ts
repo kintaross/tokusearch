@@ -7,15 +7,16 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { dealId: string } }
+  context: { params: Promise<{ dealId: string }> }
 ) {
   const session = await getSessionForMe();
   if (!session) {
     return NextResponse.json({ error: 'ログインが必要です' }, { status: 401 });
   }
   try {
+    const { dealId } = await context.params;
     const pool = getDbPool();
-    const note = await dbMe.getDealNote(pool, session.id, params.dealId);
+    const note = await dbMe.getDealNote(pool, session.id, dealId);
     return NextResponse.json({ note: note ?? '' });
   } catch (e) {
     console.error('GET /api/me/deals/[dealId]/note', e);
@@ -25,7 +26,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { dealId: string } }
+  context: { params: Promise<{ dealId: string }> }
 ) {
   const session = await getSessionForMe();
   if (!session) {
@@ -34,8 +35,9 @@ export async function PUT(
   try {
     const body = await request.json();
     const note = typeof body.note === 'string' ? body.note : '';
+    const { dealId } = await context.params;
     const pool = getDbPool();
-    await dbMe.setDealNote(pool, session.id, params.dealId, note);
+    await dbMe.setDealNote(pool, session.id, dealId, note);
     return NextResponse.json({ note });
   } catch (e) {
     console.error('PUT /api/me/deals/[dealId]/note', e);

@@ -31,20 +31,48 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // オープンリダイレクト対策:
+    // - 入力URLは「どこ得？」のリンク (`https://dokotoku.jp/link/...`) のみに限定
+    let parsed: URL;
+    try {
+      parsed = new URL(originalUrl);
+    } catch {
+      return NextResponse.json({ error: 'URLパラメータが不正です' }, { status: 400 });
+    }
+    if (parsed.protocol !== 'https:') {
+      return NextResponse.json({ error: 'https のURLのみ許可されています' }, { status: 400 });
+    }
+    if (parsed.username || parsed.password) {
+      return NextResponse.json({ error: 'URLに認証情報を含めることはできません' }, { status: 400 });
+    }
+    if (parsed.hostname !== 'dokotoku.jp' || !parsed.pathname.startsWith('/link/')) {
+      return NextResponse.json(
+        { error: '許可されていないURLです（dokotoku.jp/link のみ）' },
+        { status: 400 }
+      );
+    }
+
     // アフィリエイトリンクを置き換え
     const affiliateUrl = await replaceAffiliateLink(originalUrl, siteName);
 
     if (!affiliateUrl) {
-      // 置き換えに失敗した場合は元のURLにリダイレクト
-      return NextResponse.redirect(originalUrl, { status: 302 });
+      return NextResponse.json(
+        { error: 'アフィリエイトリンクの生成に失敗しました（紹介ID未設定の可能性があります）' },
+        { status: 400 }
+      );
+    }
+
+    // 出力URLも安全性チェック（https のみ）
+    const out = new URL(affiliateUrl);
+    if (out.protocol !== 'https:' || out.username || out.password) {
+      return NextResponse.json({ error: '生成されたURLが不正です' }, { status: 500 });
     }
 
     // 置き換え後のURLにリダイレクト
     return NextResponse.redirect(affiliateUrl, { status: 302 });
   } catch (error) {
     console.error('リダイレクトエラー:', error);
-    // エラーが発生した場合は元のURLにリダイレクト
-    return NextResponse.redirect(originalUrl, { status: 302 });
+    return NextResponse.json({ error: 'リダイレクトに失敗しました' }, { status: 500 });
   }
 }
 

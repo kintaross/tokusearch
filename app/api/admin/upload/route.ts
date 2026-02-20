@@ -24,6 +24,7 @@ async function getGoogleDriveClientWithOAuth() {
   const clientId = process.env.GOOGLE_DRIVE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
   const refreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
+  const debug = process.env.DEBUG_UPLOAD === '1';
 
   if (!clientId || !clientSecret || !refreshToken) {
     throw new Error(
@@ -36,18 +37,16 @@ async function getGoogleDriveClientWithOAuth() {
   // リフレッシュトークンを使用する場合、リダイレクトURIは実際には使用されないが、初期化時に指定が必要
   // 環境変数から読み込むか、デフォルトでlocalhostを使用（リフレッシュトークン取得時に使用したURI）
   const redirectUri = process.env.GOOGLE_DRIVE_REDIRECT_URI || 'http://localhost:3000/oauth2callback';
-
-  console.log('OAuth 2.0認証情報の確認:', {
-    clientId: clientId ? `${clientId.substring(0, 20)}...` : '未設定',
-    clientSecret: clientSecret ? '設定済み' : '未設定',
-    refreshToken: refreshToken ? `${refreshToken.substring(0, 20)}...` : '未設定',
-    refreshTokenLength: refreshToken ? refreshToken.length : 0,
-    redirectUri,
-  });
-  
-  // リフレッシュトークンの形式を確認
-  if (refreshToken && !refreshToken.startsWith('1//')) {
-    console.warn('⚠️ リフレッシュトークンの形式が正しくない可能性があります');
+  if (debug) {
+    console.log('OAuth 2.0認証情報の確認:', {
+      hasClientId: !!clientId,
+      hasClientSecret: !!clientSecret,
+      hasRefreshToken: !!refreshToken,
+      redirectUri,
+    });
+    if (refreshToken && !refreshToken.startsWith('1//')) {
+      console.warn('⚠️ リフレッシュトークンの形式が正しくない可能性があります');
+    }
   }
 
   const oauth2Client = new google.auth.OAuth2(
@@ -67,14 +66,9 @@ async function getGoogleDriveClientWithOAuth() {
     if (!accessToken.token) {
       throw new Error('アクセストークンの取得に失敗しました');
     }
-    console.log('アクセストークンの取得に成功しました');
+    if (debug) console.log('アクセストークンの取得に成功しました');
   } catch (tokenError: any) {
-    console.error('アクセストークン取得エラー:', {
-      message: tokenError.message,
-      code: tokenError.code,
-      response: tokenError.response?.data,
-      error: tokenError.errors,
-    });
+    console.error('アクセストークン取得エラー:', { message: tokenError.message, code: tokenError.code });
     
     // より詳細なエラー情報を提供
     let errorDetails = `アクセストークンの取得に失敗しました: ${tokenError.message}`;
@@ -153,6 +147,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const debug = process.env.DEBUG_UPLOAD === '1';
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
@@ -228,11 +223,10 @@ export async function POST(request: NextRequest) {
           type: 'anyone',
         },
       });
-      console.log('ファイルの共有設定が完了しました:', shareResult.data);
+      if (debug) console.log('ファイルの共有設定が完了しました:', shareResult.data);
       shareSuccess = true;
     } catch (shareError: any) {
       console.error('共有設定に失敗しました:', shareError.message);
-      console.error('共有設定エラー詳細:', shareError.response?.data);
       
       // 共有設定に失敗した場合、ファイルの共有状態を確認
       try {
@@ -240,10 +234,12 @@ export async function POST(request: NextRequest) {
           fileId: fileId,
           fields: 'shared, permissions',
         });
-        console.log('ファイル情報:', {
-          shared: fileInfo.data.shared,
-          permissions: fileInfo.data.permissions,
-        });
+        if (debug) {
+          console.log('ファイル情報:', {
+            shared: fileInfo.data.shared,
+            permissions: fileInfo.data.permissions,
+          });
+        }
       } catch (infoError: any) {
         console.error('ファイル情報の取得に失敗しました:', infoError.message);
       }
@@ -254,12 +250,11 @@ export async function POST(request: NextRequest) {
     // 共有設定済みファイルは uc?export=view&id=ファイルID 形式で直接表示可能
     // fileIdを確実に含めるため、常にこの形式で生成
     const imageUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-    
-    console.log('生成された画像URL:', imageUrl);
-    console.log('ファイルID:', fileId);
-    console.log('共有設定状態:', shareSuccess ? '成功' : '失敗（確認が必要）');
-    console.log('webContentLink:', driveFile.data.webContentLink || '利用不可');
-    console.log('webViewLink:', driveFile.data.webViewLink || '利用不可');
+    if (debug) {
+      console.log('共有設定状態:', shareSuccess ? '成功' : '失敗（確認が必要）');
+      console.log('webContentLink:', driveFile.data.webContentLink || '利用不可');
+      console.log('webViewLink:', driveFile.data.webViewLink || '利用不可');
+    }
 
     const responseData = {
       url: imageUrl,
@@ -267,17 +262,10 @@ export async function POST(request: NextRequest) {
       message: 'ファイルがアップロードされました。',
     };
     
-    console.log('APIレスポンスデータ:', JSON.stringify(responseData, null, 2));
-
     return NextResponse.json(responseData, { status: 201 });
   } catch (error: any) {
     console.error('Upload error:', error);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      response: error.response?.data,
-      errors: error.errors,
-    });
+    console.error('Error details:', { message: error.message, code: error.code });
     
     // エラーの詳細を返す
     const errorMessage = error.message || 'Failed to upload file';
@@ -303,7 +291,7 @@ export async function POST(request: NextRequest) {
         {
           error: errorMessage,
           details: details,
-          errorResponse: errorResponse,
+          errorResponse: process.env.DEBUG_UPLOAD === '1' ? errorResponse : undefined,
         },
         { status: 500 }
       );

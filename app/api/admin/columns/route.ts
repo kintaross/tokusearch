@@ -20,14 +20,23 @@ export async function GET(request: NextRequest) {
   const adminOk = !!session && (session.user.role === 'admin' || session.user.role === 'editor');
   const apiKeyOk = isIngestAuthorized(request);
 
-  if (!adminOk && !apiKeyOk) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   const searchParams = request.nextUrl.searchParams;
   const status = searchParams.get('status') || undefined;
   const category = searchParams.get('category') || undefined;
   const titlesOnly = searchParams.get('titles_only') === 'true';
+
+  if (!adminOk && !apiKeyOk) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // APIキー認証は、重複チェック用途（タイトル一覧）に限定して被害範囲を最小化する
+  // - 管理者Cookieなしで詳細（本文など）を返さない
+  if (!adminOk && apiKeyOk && !titlesOnly) {
+    return NextResponse.json(
+      { error: 'Forbidden (titles_only=true is required for API key access)' },
+      { status: 403 }
+    );
+  }
 
   const columns = await fetchColumnsFromSheet({
     status: status as any,

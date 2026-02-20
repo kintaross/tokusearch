@@ -15,14 +15,15 @@ function getAdminSessionFromRequest(request: NextRequest) {
 // コラム取得
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const session = getAdminSessionFromRequest(request);
   if (!session || (session.user.role !== 'admin' && session.user.role !== 'editor')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const column = await getColumnById(params.id);
+  const { id } = await context.params;
+  const column = await getColumnById(id);
 
   if (!column) {
     return NextResponse.json({ error: 'Column not found' }, { status: 404 });
@@ -34,7 +35,7 @@ export async function GET(
 // コラム更新
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const session = getAdminSessionFromRequest(request);
   if (!session || (session.user.role !== 'admin' && session.user.role !== 'editor')) {
@@ -42,6 +43,7 @@ export async function PUT(
   }
 
   try {
+    const { id } = await context.params;
     const body = await request.json();
 
     // ステータスがpublishedに変更された場合、published_atを設定
@@ -50,7 +52,7 @@ export async function PUT(
       updateData.published_at = new Date().toISOString();
     }
 
-    const updatedColumn = await updateColumn(params.id, updateData);
+    const updatedColumn = await updateColumn(id, updateData);
 
     if (!updatedColumn) {
       return NextResponse.json({ error: 'Column not found' }, { status: 404 });
@@ -68,7 +70,7 @@ export async function PUT(
 // コラム削除
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const session = getAdminSessionFromRequest(request);
   if (!session || (session.user.role !== 'admin' && session.user.role !== 'editor')) {
@@ -76,7 +78,8 @@ export async function DELETE(
   }
 
   try {
-    const success = await deleteColumn(params.id);
+    const { id } = await context.params;
+    const success = await deleteColumn(id);
 
     if (!success) {
       return NextResponse.json({ error: 'Column not found' }, { status: 404 });

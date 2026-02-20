@@ -35,26 +35,7 @@
 ```
 # n8n Webhook URL
 N8N_WEBHOOK_URL=https://k-n8n.xvps.jp/webhook/column-request-webhook
-
-# reCAPTCHA v3 (オプション)
-RECAPTCHA_SECRET_KEY=your-secret-key
 ```
-
-#### クライアントサイド (`.env.local` または Vercel環境変数)
-
-```
-# reCAPTCHA v3 (オプション)
-NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-site-key
-```
-
-### reCAPTCHAの設定（推奨）
-
-1. [Google reCAPTCHA](https://www.google.com/recaptcha/admin)でサイトを登録
-2. reCAPTCHA v3を選択
-3. ドメインを登録（例: `tokusearch.vercel.app`）
-4. 取得したSite KeyとSecret Keyを環境変数に設定
-
-**注意**: reCAPTCHAが設定されていない場合、機能は動作しますがスパム対策が無効になります。
 
 ## デプロイ手順
 
@@ -62,8 +43,6 @@ NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-site-key
 
 Vercelダッシュボードで以下を確認：
 - `N8N_WEBHOOK_URL` が設定されているか
-- `RECAPTCHA_SECRET_KEY` が設定されているか（オプション）
-- `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` が設定されているか（オプション）
 
 ### 2. ビルドテスト
 
@@ -118,17 +97,6 @@ git push origin main
 2. `.env.local`に設定（ローカル開発時）
 3. Vercel環境変数に設定（本番環境）
 
-### エラー: reCAPTCHA関連のエラー
-
-**原因**: reCAPTCHAキーが正しく設定されていない、またはドメインが未登録
-
-**解決方法**:
-1. reCAPTCHAの管理画面でドメインが登録されているか確認
-2. Site KeyとSecret Keyが正しいか確認
-3. 環境変数が正しく設定されているか確認
-
-**注意**: reCAPTCHAが設定されていない場合でも機能は動作します。スパム対策が必要な場合は設定を推奨します。
-
 ### Webhookが呼び出されない
 
 **原因**: n8nのWebhook URLが正しくない、またはn8nワークフローが無効
@@ -149,15 +117,11 @@ git push origin main
 
 ## 既知の制限事項
 
-1. **reCAPTCHA v3の実装**
-   - 設定されていない場合は動作しますが、スパム対策が無効
-   - 本番環境では設定を推奨
-
-2. **エラーハンドリング**
+1. **エラーハンドリング**
    - Webhookが失敗してもユーザーには成功メッセージが表示される
    - サーバーログでエラーを確認する必要がある
 
-3. **リクエスト履歴**
+2. **リクエスト履歴**
    - ユーザー側ではリクエスト履歴を確認できない
    - n8nとGoogle Sheetsで管理
 

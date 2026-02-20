@@ -17,12 +17,10 @@ SlackまたはWebサイトからのリクエストを受け取り、AIでテー�
 #### 1.2 Webhookトリガー
 - **エンドポイント**: `POST /api/column-requests`
 - **認証**: なし（公開アクセス）
-- **スパム対策**: reCAPTCHA v3
 - **リクエスト形式**:
   ```json
   {
-    "requestText": "テーマ内容",
-    "recaptchaToken": "reCAPTCHAトークン"
+    "requestText": "テーマ内容"
   }
   ```
 
@@ -164,8 +162,7 @@ SlackまたはWebサイトからのリクエストを受け取り、AIでテー�
 **リクエスト**:
 ```json
 {
-  "requestText": "避けるべきお得まとめ",
-  "recaptchaToken": "token..."
+  "requestText": "避けるべきお得まとめ"
 }
 ```
 
@@ -244,7 +241,6 @@ SlackまたはWebサイトからのリクエストを受け取り、AIでテー�
 - ✅ Slackメンションによるトリガー
 - ✅ テーマ生成（Gemini）
 - ✅ Webhookトリガー（Webサイトからのリクエスト）
-- ✅ reCAPTCHA検証
 - ✅ 記事生成（Gemini）
 - ✅ TokuSearch APIへの投稿
 
@@ -253,7 +249,6 @@ SlackまたはWebサイトからのリクエストを受け取り、AIでテー�
 - ✅ Slackメンションによるトリガー
 - ✅ テーマ生成（Gemini）
 - ✅ Webhookトリガー（Webサイトからのリクエスト）
-- ✅ reCAPTCHA検証
 - ✅ 記事生成（Gemini）
 - ✅ TokuSearch APIへの投稿
 - ✅ Slack Block Kitによる承認フロー

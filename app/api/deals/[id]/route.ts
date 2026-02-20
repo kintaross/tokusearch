@@ -7,10 +7,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const deal = await fetchDealById(params.id, { includePrivate: false });
+    const { id } = await context.params;
+    const deal = await fetchDealById(id, { includePrivate: false });
 
     if (!deal) {
       return NextResponse.json(
@@ -33,7 +34,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 認証チェック
@@ -60,7 +61,8 @@ export async function PUT(
     } = body;
 
     // Sheets/DB を更新（env で切替）
-    await updateDealById(params.id, updates);
+    const { id: dealId } = await context.params;
+    await updateDealById(dealId, updates);
 
     return NextResponse.json({
       success: true,
