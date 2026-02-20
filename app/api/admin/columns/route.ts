@@ -6,7 +6,7 @@ import {
 } from '@/lib/columns';
 import { autoInsertImageMarkers } from '@/lib/column-image-markers';
 import { ADMIN_SESSION_COOKIE, verifyAdminSessionValue } from '@/lib/admin-session';
-import { getIngestApiKey } from '@/lib/ingest-auth';
+import { getIngestApiKey, isIngestAuthorized } from '@/lib/ingest-auth';
 
 function getAdminSessionFromRequest(request: NextRequest) {
   const secret = process.env.ADMIN_SESSION_SECRET || process.env.NEXTAUTH_SECRET || '';
@@ -14,21 +14,29 @@ function getAdminSessionFromRequest(request: NextRequest) {
   return verifyAdminSessionValue({ value, secret });
 }
 
-// コラム一覧取得
+// コラム一覧取得（管理者Cookie OR APIキー認証）
 export async function GET(request: NextRequest) {
   const session = getAdminSessionFromRequest(request);
-  if (!session || (session.user.role !== 'admin' && session.user.role !== 'editor')) {
+  const adminOk = !!session && (session.user.role === 'admin' || session.user.role === 'editor');
+  const apiKeyOk = isIngestAuthorized(request);
+
+  if (!adminOk && !apiKeyOk) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const searchParams = request.nextUrl.searchParams;
   const status = searchParams.get('status') || undefined;
   const category = searchParams.get('category') || undefined;
+  const titlesOnly = searchParams.get('titles_only') === 'true';
 
   const columns = await fetchColumnsFromSheet({
     status: status as any,
     category,
   });
+
+  if (titlesOnly) {
+    return NextResponse.json(columns.map((c: any) => ({ title: c.title, slug: c.slug })));
+  }
 
   return NextResponse.json(columns);
 }
