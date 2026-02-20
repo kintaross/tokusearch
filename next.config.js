@@ -8,6 +8,12 @@ const nextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 86400,
+    localPatterns: [
+      {
+        pathname: '/api/image-proxy',
+        search: '?url=*',
+      },
+    ],
     remotePatterns: [
       {
         protocol: 'https',
