@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { Metadata } from 'next';
 import { fetchDealsForPublic } from '@/lib/deals-data';
 import { CategoryMain } from '@/types/deal';
@@ -11,6 +10,7 @@ import {
 } from '@/lib/home-utils';
 import { fetchColumnsFromSheet } from '@/lib/columns';
 import { Column } from '@/types/column';
+import { ColumnImage } from '@/components/columns/ColumnImage';
 
 export const revalidate = 60;
 
@@ -332,16 +332,10 @@ export default async function HomePage({
               <Link key={column.id} href={`/columns/${column.slug}`} className="min-w-[280px] w-[85%] md:w-auto flex-shrink-0 snap-center group cursor-pointer">
                 <div className="aspect-[4/3] rounded-2xl md:rounded-[2rem] mb-4 md:mb-6 overflow-hidden bg-white shadow-sm relative">
                   {column.thumbnail_url ? (
-                    <Image
+                    <ColumnImage
+                      src={column.thumbnail_url}
                       alt={column.title}
-                      className="object-cover group-hover:scale-105 transition-transform duration-1000"
-                      src={
-                        column.thumbnail_url.includes('drive.google.com')
-                          ? `/api/image-proxy?url=${encodeURIComponent(column.thumbnail_url)}`
-                          : column.thumbnail_url
-                      }
-                      fill
-                      sizes="(max-width: 768px) 85vw, 400px"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
                     />
                   ) : (
                     <div className="w-full h-full bg-soft-greige flex items-center justify-center text-accent-brown/20">

@@ -141,13 +141,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
+  const thumb = (column.thumbnail_url || '').trim();
+  const ogImage =
+    thumb && (thumb.includes('drive.google.com') || thumb.includes('lh3.googleusercontent.com'))
+      ? `/api/image-proxy?url=${encodeURIComponent(thumb)}`
+      : thumb || undefined;
+
   return {
     title: `${column.title} | TokuSearch コラム`,
     description: column.description,
     openGraph: {
       title: column.title,
       description: column.description,
-      images: column.thumbnail_url ? [column.thumbnail_url] : [],
+      images: ogImage ? [ogImage] : [],
       url: `https://tokusearch.vercel.app/columns/${column.slug}`,
     },
     alternates: {

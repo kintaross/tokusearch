@@ -1,10 +1,10 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { Metadata } from 'next';
 import { BookOpen, TrendingUp, Calendar, Eye, Sparkles, List } from 'lucide-react';
 import { fetchColumnsFromSheet, getAllCategories, paginateColumns } from '@/lib/columns';
 import { RequestButton } from '@/components/columns/RequestButton';
 import { Pagination } from '@/components/columns/Pagination';
+import { ColumnImage } from '@/components/columns/ColumnImage';
 
 export const revalidate = 60;
 
@@ -222,16 +222,11 @@ export default async function ColumnsPage({ searchParams }: PageProps) {
                     className="bg-white border border-[#ebe7df] rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
                   >
                     {column.thumbnail_url && (
-                      <div className="w-full h-48 relative overflow-hidden">
-                        <Image
-                          src={column.thumbnail_url.includes('drive.google.com') 
-                            ? `/api/image-proxy?url=${encodeURIComponent(column.thumbnail_url)}`
-                            : column.thumbnail_url}
+                      <div className="w-full h-48 overflow-hidden">
+                        <ColumnImage
+                          src={column.thumbnail_url}
                           alt={column.title}
-                          fill
-                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                          className="object-cover"
-                          unoptimized
+                          className="w-full h-full object-cover"
                         />
                       </div>
                     )}
@@ -295,16 +290,11 @@ export default async function ColumnsPage({ searchParams }: PageProps) {
                               {column.category}
                             </span>
                             {column.thumbnail_url && (
-                              <div className="w-16 h-16 rounded overflow-hidden flex-shrink-0 relative">
-                                <Image
-                                  src={column.thumbnail_url.includes('drive.google.com') 
-                                    ? `/api/image-proxy?url=${encodeURIComponent(column.thumbnail_url)}`
-                                    : column.thumbnail_url}
+                              <div className="w-16 h-16 rounded overflow-hidden flex-shrink-0">
+                                <ColumnImage
+                                  src={column.thumbnail_url}
                                   alt={column.title}
-                                  fill
-                                  sizes="64px"
-                                  className="object-cover"
-                                  unoptimized
+                                  className="w-full h-full object-cover"
                                 />
                               </div>
                             )}
@@ -357,16 +347,11 @@ export default async function ColumnsPage({ searchParams }: PageProps) {
                         className="bg-white border border-[#ebe7df] rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
                       >
                         {column.thumbnail_url && (
-                          <div className="w-full h-48 relative overflow-hidden">
-                            <Image
-                              src={column.thumbnail_url.includes('drive.google.com') 
-                                ? `/api/image-proxy?url=${encodeURIComponent(column.thumbnail_url)}`
-                                : column.thumbnail_url}
+                          <div className="w-full h-48 overflow-hidden">
+                            <ColumnImage
+                              src={column.thumbnail_url}
                               alt={column.title}
-                              fill
-                              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                              className="object-cover"
-                              unoptimized={!column.thumbnail_url.includes('drive.google.com')}
+                              className="w-full h-full object-cover"
                             />
                           </div>
                         )}
@@ -417,16 +402,11 @@ export default async function ColumnsPage({ searchParams }: PageProps) {
                               className="bg-white border border-[#ebe7df] rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
                             >
                               {column.thumbnail_url && (
-                                <div className="w-full h-48 relative overflow-hidden">
-                                  <Image
-                                    src={column.thumbnail_url.includes('drive.google.com') 
-                                      ? `/api/image-proxy?url=${encodeURIComponent(column.thumbnail_url)}`
-                                      : column.thumbnail_url}
+                                <div className="w-full h-48 overflow-hidden">
+                                  <ColumnImage
+                                    src={column.thumbnail_url}
                                     alt={column.title}
-                                    fill
-                                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                    className="object-cover"
-                                    unoptimized={!column.thumbnail_url.includes('drive.google.com')}
+                                    className="w-full h-full object-cover"
                                   />
                                 </div>
                               )}

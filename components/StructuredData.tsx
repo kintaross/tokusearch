@@ -129,12 +129,19 @@ export function BreadcrumbStructuredData({
 }
 
 export function ColumnStructuredData({ column }: { column: Column }) {
+  const baseUrl = 'https://tokusearch.vercel.app';
+  const thumb = (column.thumbnail_url || '').trim();
+  const imageUrl =
+    thumb && (thumb.includes('drive.google.com') || thumb.includes('lh3.googleusercontent.com'))
+      ? `${baseUrl}/api/image-proxy?url=${encodeURIComponent(thumb)}`
+      : thumb;
+
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: column.title,
     description: column.description,
-    image: column.thumbnail_url ? [column.thumbnail_url] : [],
+    image: imageUrl ? [imageUrl] : [],
     datePublished: column.published_at || column.created_at,
     dateModified: column.updated_at || column.published_at || column.created_at,
     author: {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type ColumnImageProps = {
   src: string;
@@ -9,69 +9,69 @@ type ColumnImageProps = {
 };
 
 export function ColumnImage({ src, alt, className = '' }: ColumnImageProps) {
-  const [imageSrc, setImageSrc] = useState(src);
-  const [hasError, setHasError] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const candidates = useMemo(() => {
+    const raw = String(src ?? '').trim();
+    if (!raw) return [];
 
-  // GoogleドライブのファイルIDを抽出
-  const extractFileId = (url: string): string | null => {
-    // https://drive.google.com/uc?id=...&export=download 形式
-    const ucIdMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    if (ucIdMatch) {
-      return ucIdMatch[1];
+    // 既にプロキシURLの場合、元URLを取り出して候補を組み直す
+    const unwrapProxy = (u: string): string => {
+      if (!u.startsWith('/api/image-proxy')) return u;
+      const idx = u.indexOf('?');
+      if (idx === -1) return u;
+      try {
+        const params = new URLSearchParams(u.slice(idx + 1));
+        const inner = params.get('url');
+        return inner ? inner : u;
+      } catch {
+        return u;
+      }
+    };
+
+    const original = unwrapProxy(raw);
+    const uniq = new Set<string>();
+
+    const isDrive = original.includes('drive.google.com');
+    const isLh3 = original.includes('lh3.googleusercontent.com');
+
+    // Drive はHTMLが返る等があるのでプロキシ優先
+    if (isDrive) {
+      uniq.add(`/api/image-proxy?url=${encodeURIComponent(original)}`);
+      uniq.add(original);
+      return [...uniq];
     }
-    
-    // https://drive.google.com/file/d/.../view 形式
-    const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (fileIdMatch) {
-      return fileIdMatch[1];
+
+    // lh3 は直読み優先、だめならプロキシを試す
+    uniq.add(original);
+    if (isLh3) {
+      uniq.add(`/api/image-proxy?url=${encodeURIComponent(original)}`);
     }
-    
-    return null;
-  };
-
-  // GoogleドライブのURL形式を最適化（プロキシ経由で読み込む）
-  const optimizeGoogleDriveUrl = (url: string): string => {
-    const fileId = extractFileId(url);
-    if (!fileId) return url;
-    const driveUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
-    return `/api/image-proxy?url=${encodeURIComponent(driveUrl)}`;
-  };
-
-  // 初回レンダリング時にURLを最適化
-  useEffect(() => {
-    const optimizedUrl = optimizeGoogleDriveUrl(src);
-    setImageSrc(optimizedUrl !== src ? optimizedUrl : src);
+    return [...uniq];
   }, [src]);
 
-  const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    if (!hasError) {
-      setHasError(true);
-      const optimizedUrl = optimizeGoogleDriveUrl(imageSrc);
-      if (optimizedUrl !== imageSrc) {
-        setImageSrc(optimizedUrl);
-        setHasError(false);
-      } else {
-        setErrorMessage('画像を読み込めませんでした。URLを確認してください。');
-      }
-    } else {
-      setErrorMessage('画像を読み込めませんでした。URLを確認してください。');
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setCandidateIndex(0);
+    setFailed(false);
+  }, [src]);
+
+  const imageSrc = candidates[candidateIndex] ?? '';
+
+  const handleError = () => {
+    if (candidateIndex < candidates.length - 1) {
+      setCandidateIndex(candidateIndex + 1);
+      return;
     }
+    setFailed(true);
   };
 
-  if (hasError && imageSrc === src) {
-    // エラーが発生し、代替URLも失敗した場合
+  if (failed || !imageSrc) {
     return (
       <div className={`${className} bg-gray-100 flex items-center justify-center`}>
         <div className="text-center text-gray-400">
           <div className="text-4xl mb-2">📷</div>
-          <div className="text-sm">{errorMessage || '画像を読み込めませんでした'}</div>
-          <div className="text-xs mt-2 text-gray-500 break-all px-4 max-w-md">
-            URL: {imageSrc}
-          </div>
-          <div className="text-xs mt-1 text-gray-400">
-            ブラウザのコンソールで詳細を確認してください
-          </div>
+          <div className="text-sm">画像を読み込めませんでした</div>
         </div>
       </div>
     );
