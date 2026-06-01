@@ -1,34 +1,14 @@
 /**
- * Simple in-memory TTL cache for server-side data.
- * Used to avoid repeated DB/API calls within the same TTL window.
+ * Next.js Data Cache のタグ。
+ * 取り込み/更新時に revalidateTag() でこのタグを無効化すると、
+ * 全インスタンスのキャッシュが一斉に最新化される（リロードしないと古い情報が出る問題の対策）。
  */
-const cache = new Map<string, { data: unknown; expiresAt: number }>();
+export const DEALS_TAG = 'deals';
+export const COLUMNS_TAG = 'columns';
 
-const MAX_CACHE_ENTRIES = 50;
-
-function evictStale() {
-  if (cache.size <= MAX_CACHE_ENTRIES) return;
-  const now = Date.now();
-  for (const [k, v] of cache) {
-    if (v.expiresAt <= now) cache.delete(k);
-  }
-  if (cache.size <= MAX_CACHE_ENTRIES) return;
-  const sorted = [...cache.entries()].sort((a, b) => a[1].expiresAt - b[1].expiresAt);
-  const toRemove = sorted.slice(0, cache.size - MAX_CACHE_ENTRIES);
-  for (const [k] of toRemove) cache.delete(k);
-}
-
-export function getCached<T>(key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
-  const entry = cache.get(key);
-  if (entry && entry.expiresAt > Date.now()) {
-    return Promise.resolve(entry.data as T);
-  }
-  return fetcher().then((data) => {
-    cache.set(key, { data, expiresAt: Date.now() + ttlMs });
-    evictStale();
-    return data;
-  });
-}
-
-/** Default TTL for public deals/columns data (60 seconds) */
-export const CACHE_TTL_PUBLIC_MS = 60_000;
+/**
+ * 公開データ（deals/columns）のキャッシュ有効期限の保険値（秒）。
+ * 通常は revalidateTag による即時無効化で最新化されるが、
+ * 取り込みが無い間に「24時間以内」から自然に外れる案件などに備えた時間ベースの保険。
+ */
+export const CACHE_TTL_PUBLIC_SEC = 300;

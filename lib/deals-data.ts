@@ -1,5 +1,6 @@
+import { unstable_cache } from 'next/cache';
 import { Deal } from '@/types/deal';
-import { getDbPool } from '@/lib/db';
+import { getDbPool, withDbRetry } from '@/lib/db';
 import {
   fetchDealByIdFromDb,
   fetchDealsFromDb,
@@ -8,13 +9,22 @@ import {
   type FetchDealsFilteredOpts,
   updateDealInDb,
 } from '@/lib/db-deals-read';
-import { getCached, CACHE_TTL_PUBLIC_MS } from '@/lib/cache';
+import { DEALS_TAG, CACHE_TTL_PUBLIC_SEC } from '@/lib/cache';
+
+/**
+ * 公開Dealsのタグ付きキャッシュ（Next.js Data Cache）。
+ * - 全インスタンス共有なので、インスタンスごとに別スナップショットを持つ問題が無い。
+ * - 取り込み/更新時に revalidateTag(DEALS_TAG) で即時無効化される。
+ * - revalidate は保険（取り込みが無い間の自然な期限切れ対策）。
+ */
+const getPublicDealsCached = unstable_cache(
+  () => withDbRetry(() => fetchDealsFromDb(getDbPool(), { includePrivate: false })),
+  ['deals:public'],
+  { tags: [DEALS_TAG], revalidate: CACHE_TTL_PUBLIC_SEC }
+);
 
 export async function fetchDealsForPublic(): Promise<Deal[]> {
-  return getCached('deals:public', CACHE_TTL_PUBLIC_MS, async () => {
-    const pool = getDbPool();
-    return await fetchDealsFromDb(pool, { includePrivate: false });
-  });
+  return getPublicDealsCached();
 }
 
 export async function fetchDealsForAdmin(): Promise<Deal[]> {

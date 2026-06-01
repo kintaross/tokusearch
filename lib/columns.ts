@@ -1,5 +1,6 @@
+import { unstable_cache } from 'next/cache';
 import { Column, ColumnStatus } from '@/types/column';
-import { getDbPool } from '@/lib/db';
+import { getDbPool, withDbRetry } from '@/lib/db';
 import {
   fetchColumnsFromDb,
   getColumnByIdFromDb,
@@ -12,7 +13,17 @@ import {
   deleteColumnInDb,
   incrementColumnViewCountInDb,
 } from '@/lib/columns-db';
-import { getCached, CACHE_TTL_PUBLIC_MS } from '@/lib/cache';
+import { COLUMNS_TAG, CACHE_TTL_PUBLIC_SEC } from '@/lib/cache';
+
+/**
+ * 公開コラム一覧のタグ付きキャッシュ（Next.js Data Cache）。
+ * 全インスタンス共有 + revalidateTag(COLUMNS_TAG) で即時無効化。
+ */
+const getPublishedColumnsCached = unstable_cache(
+  () => withDbRetry(() => fetchColumnsFromDb(getDbPool(), { status: 'published', lightweight: true })),
+  ['columns:published'],
+  { tags: [COLUMNS_TAG], revalidate: CACHE_TTL_PUBLIC_SEC }
+);
 
 // コラム一覧を取得（lightweight: content_markdown/html を除外）
 export async function fetchColumnsFromSheet(
@@ -25,9 +36,7 @@ export async function fetchColumnsFromSheet(
   const pool = getDbPool();
   const wantPublished = options?.status === 'published' || options?.status === undefined;
   if (wantPublished) {
-    const columns = await getCached('columns:published', CACHE_TTL_PUBLIC_MS, () =>
-      fetchColumnsFromDb(pool, { status: 'published', lightweight: true })
-    );
+    const columns = await getPublishedColumnsCached();
     let result = columns;
     if (options?.category) result = result.filter((col) => col.category === options.category);
     if (options?.featured !== undefined) result = result.filter((col) => col.is_featured === options.featured);
