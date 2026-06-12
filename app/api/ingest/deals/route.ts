@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
 import { getDbPool } from '@/lib/db';
 import { upsertDeals } from '@/lib/db-deals';
 import { isIngestAuthorized } from '@/lib/ingest-auth';
-import { DEALS_TAG } from '@/lib/cache';
+import { revalidateDeals } from '@/lib/cache';
 import { Deal } from '@/types/deal';
 
 export const dynamic = 'force-dynamic';
@@ -55,8 +54,9 @@ export async function POST(request: NextRequest) {
     const pool = getDbPool();
     const { upserted } = await upsertDeals(pool, deals);
 
-    // 公開Dealsキャッシュを即時無効化（TOP/新着などに新しい情報をすぐ反映）
-    revalidateTag(DEALS_TAG, 'max');
+    // 公開Dealsのキャッシュ(Data Cache + ISRページのFull Route Cache)を即時無効化し、
+    // TOP/新着などにリロード無しで最新情報を反映する。
+    revalidateDeals();
 
     return NextResponse.json({ success: true, received: deals.length, upserted });
   } catch (error: any) {

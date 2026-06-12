@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
 import {
   getColumnById,
   updateColumn,
   deleteColumn,
 } from '@/lib/columns';
-import { COLUMNS_TAG } from '@/lib/cache';
+import { revalidateColumns } from '@/lib/cache';
 import { ADMIN_SESSION_COOKIE, verifyAdminSessionValue } from '@/lib/admin-session';
 
 function getAdminSessionFromRequest(request: NextRequest) {
@@ -60,8 +59,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Column not found' }, { status: 404 });
     }
 
-    // 公開コラムキャッシュを即時無効化
-    revalidateTag(COLUMNS_TAG, 'max');
+    // 公開コラムのキャッシュ(Data Cache + ISRページのFull Route Cache)を即時無効化
+    revalidateColumns();
 
     return NextResponse.json(updatedColumn);
   } catch (error: any) {
@@ -90,8 +89,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Column not found' }, { status: 404 });
     }
 
-    // 公開コラムキャッシュを即時無効化
-    revalidateTag(COLUMNS_TAG, 'max');
+    // 公開コラムのキャッシュ(Data Cache + ISRページのFull Route Cache)を即時無効化
+    revalidateColumns();
 
     return NextResponse.json({ message: 'Column deleted successfully' });
   } catch (error: any) {

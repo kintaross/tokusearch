@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
 import {
   fetchColumnsFromSheet,
   createColumn,
   generateSlug,
 } from '@/lib/columns';
-import { COLUMNS_TAG } from '@/lib/cache';
+import { revalidateColumns } from '@/lib/cache';
 import { autoInsertImageMarkers } from '@/lib/column-image-markers';
 import { ADMIN_SESSION_COOKIE, verifyAdminSessionValue } from '@/lib/admin-session';
 import { getIngestApiKey, isIngestAuthorized } from '@/lib/ingest-auth';
@@ -114,8 +113,8 @@ export async function POST(request: NextRequest) {
       published_at: body.status === 'published' ? new Date().toISOString() : '',
     });
 
-    // 公開コラムキャッシュを即時無効化
-    revalidateTag(COLUMNS_TAG, 'max');
+    // 公開コラムのキャッシュ(Data Cache + ISRページのFull Route Cache)を即時無効化
+    revalidateColumns();
 
     return NextResponse.json(newColumn, { status: 201 });
   } catch (error: any) {

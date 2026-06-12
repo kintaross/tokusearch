@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
 import { fetchDealById, updateDealById } from '@/lib/deals-data';
-import { DEALS_TAG } from '@/lib/cache';
+import { revalidateDeals } from '@/lib/cache';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 
@@ -66,8 +65,8 @@ export async function PUT(
     const { id: dealId } = await context.params;
     await updateDealById(dealId, updates);
 
-    // 公開Dealsキャッシュを即時無効化
-    revalidateTag(DEALS_TAG, 'max');
+    // 公開Dealsのキャッシュ(Data Cache + ISRページのFull Route Cache)を即時無効化
+    revalidateDeals();
 
     return NextResponse.json({
       success: true,
